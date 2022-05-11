@@ -15,8 +15,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.8.1</version>
         <configuration>
-          <source>11</source>
-          <target>11</target>
+          <source>15</source>
+          <target>15</target>
         </configuration>
       </plugin>
     </plugins>
@@ -58,14 +58,14 @@
   <dependency>
     <groupId>org.matsim</groupId>
     <artifactId>matsim</artifactId>
-    <version>12.0-SNAPSHOT</version>
+    <version>14.0-SNAPSHOT</version>
   </dependency>
   
 
 <dependency>
 		    <groupId>org.matsim.contrib</groupId>
 		    <artifactId>roadpricing</artifactId>
-		    <version>12.0-SNAPSHOT</version>
+		    <version>14.0-SNAPSHOT</version>
 		    <exclusions>
 		    	<exclusion>
 		    		<groupId>org.matsim</groupId>
@@ -76,7 +76,7 @@
 		<dependency>
 			<groupId>org.matsim.contrib</groupId>
 			<artifactId>signals</artifactId>
- 			<version>12.0-SNAPSHOT</version>
+ 			<version>14.0-SNAPSHOT</version>
  			<exclusions>
  				<exclusion>
  					<groupId>org.matsim</groupId>
@@ -87,7 +87,7 @@
 		<dependency>
 			<groupId>org.matsim.contrib</groupId>
 			<artifactId>emissions</artifactId>
-			<version>12.0-SNAPSHOT</version>
+			<version>14.0-SNAPSHOT</version>
 			<exclusions>
 				<exclusion>
 					<groupId>org.matsim</groupId>
@@ -111,6 +111,14 @@
             <artifactId>gt-swing</artifactId>
             <version>${geotools.version}</version>
         </dependency>
+
+
+<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-math -->
+<dependency>
+    <groupId>org.apache.commons</groupId>
+    <artifactId>commons-math</artifactId>
+    <version>2.2</version>
+</dependency>
 
 
 
