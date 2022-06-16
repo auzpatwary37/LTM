@@ -3,6 +3,8 @@ package linkModels;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.core.utils.collections.Tuple;
 
+import ust.hk.praisehk.metamodelcalibration.Utils.MapToArray;
+
 public interface LinkModel {
 	
 	
@@ -20,7 +22,7 @@ public interface LinkModel {
 	 * @param timeLimits
 	 * @param routeIndex
 	 */
-	public void setLTMTimeBeanAndRouteSet(double[] timePoints, int[] routeIndex);
+	public void setLTMTimeBeanAndRouteSet(double[] timePoints, MapToArray routes);
 
 	/**
 	 * Get the inherent link 
@@ -40,14 +42,14 @@ public interface LinkModel {
 	 * @param timeIdx
 	 * @return
 	 */
-	public double getSendingFlow(int timeIdx);
+	public Tuple<double[],double[][]> getSendingFlow(int timeIndx);
 	
 	/**
-	 * Get the recieving flow for the time index (See the thesis of Yperman. Yperman, I. (2007). The link transmission model for dynamic network loading.) 
+	 * Get the receiving flow for the time index (See the thesis of Yperman. Yperman, I. (2007). The link transmission model for dynamic network loading.) 
 	 * @param timeIdx
 	 * @return
 	 */
-	public double getRecivingFlow(int timeIdx);
+	public Tuple<double[],double[][]> getRecivingFlow(int timeIdx);
 	
 	/**
 	 * update the boundary cumulative flow for timeIndex timeIndx at x0
@@ -97,8 +99,13 @@ public interface LinkModel {
 	
 	public double[] getK();
 
-	public int[] getrIndex();
+	public MapToArray getRoutes();
 
 	public int getTimeindexNo();
+	/**
+	 * This function should set up the internal state of the link model for gradient estimations 
+	 * @param variables
+	 */
+	public void setOptimizationVariables(MapToArray variables);
 
 }

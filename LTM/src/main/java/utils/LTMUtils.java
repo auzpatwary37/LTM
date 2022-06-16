@@ -35,7 +35,7 @@ public class LTMUtils{
 	 * 
 	 * @return
 	 */
-	public Tuple<double[],List<double[]>> calculateProportionAndGradient(double[] weights, List<double[]> weightGradients, double capacity, double[] capacityGradient){
+	public static Tuple<double[],List<double[]>> calculateProportionAndGradient(double[] weights, List<double[]> weightGradients, double capacity, double[] capacityGradient){
 		double[] p = new double[weights.length];
 		double[] pCap = new double[weights.length];
 		List<RealVector> pGrads =null;
@@ -85,7 +85,7 @@ public class LTMUtils{
 	 * @return tuple containing interpolated value y and the gradient vector dy
 	 * Should work with dX And dY null And dx null, in that case only the interpolated value will be returned, i.e., the second term, i.e., the gradient of y in the tuple will return null
 	 */
-	public Tuple<Double,double[]> calcLinearInterpolationAndGradient(Tuple<Double,Double> X, Tuple<Double,Double> Y,Tuple<double[],double[]> dX, 
+	public static Tuple<Double,double[]> calcLinearInterpolationAndGradient(Tuple<Double,Double> X, Tuple<Double,Double> Y,Tuple<double[],double[]> dX, 
 			Tuple<double[],double[]>dY,double x, double[] dx){
 		
 		RealVector X2minusX1Grad = null;
