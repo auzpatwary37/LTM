@@ -96,7 +96,20 @@ public void writeCSV(Map<String,double[]> mapToWrite,String fileLoc) {
 		e.printStackTrace();
 	}
 }
-
+/**
+ * Returns the index of the key key, -1 if not present
+ * Here, the search is done using the toString output
+ * @param key
+ * @return
+ */
+public int getIndex(T key) {
+	int i =0;
+	for(T tt:this.keySet) {
+		if(key.toString().equals(tt.toString()))return i;
+		i++;
+	}
+	return -1;
+}
 
 public static void main(String[] args) {
 	String a = "ami\"";

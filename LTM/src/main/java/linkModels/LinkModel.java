@@ -1,9 +1,17 @@
 package linkModels;
 
+import java.util.Map;
+
 import org.matsim.api.core.v01.network.Link;
+
+import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.utils.collections.Tuple;
 
-import ust.hk.praisehk.metamodelcalibration.Utils.MapToArray;
+import utils.MapToArray;
+import utils.TuplesOfThree;
+import utils.VariableDetails;
+
+
 
 public interface LinkModel {
 	
@@ -22,7 +30,7 @@ public interface LinkModel {
 	 * @param timeLimits
 	 * @param routeIndex
 	 */
-	public void setLTMTimeBeanAndRouteSet(double[] timePoints, MapToArray routes);
+	public void setLTMTimeBeanAndRouteSet(double[] timePoints, MapToArray<NetworkRoute> routes);
 
 	/**
 	 * Get the inherent link 
@@ -40,41 +48,43 @@ public interface LinkModel {
 	/**
 	 * Get the sending flow for the time index (See the thesis of Yperman. Yperman, I. (2007). The link transmission model for dynamic network loading.) 
 	 * @param timeIdx
-	 * @return
+	 * @return tuplesOfThree containing S Sdt and dS
 	 */
-	public Tuple<double[],double[][]> getSendingFlow(int timeIndx);
+	public TuplesOfThree<double[],double[],double[][]> getSendingFlow(int timeIndx);
 	
 	/**
 	 * Get the receiving flow for the time index (See the thesis of Yperman. Yperman, I. (2007). The link transmission model for dynamic network loading.) 
 	 * @param timeIdx
 	 * @return
+	 * tuplesOfThree containing R, Rdt and dR
 	 */
-	public Tuple<double[],double[][]> getRecivingFlow(int timeIdx);
+	public TuplesOfThree<double[], double[], double[][]> getRecivingFlow(int timeIdx);
 	
 	/**
 	 * update the boundary cumulative flow for timeIndex timeIndx at x0
 	 * @param flow
 	 * @param timeIndx
 	 */
-	public void updateNx0(double flow,int timeIndx);
+	public void updateNx0(double flow,int timeIndx,double[]dNx0);
 	/**
-	 * update the boundary cumulative flow for timeIndex timeIndx at xl
+	 * update the boundary cumulative flow for timeIndex timeIndx at xl 
+	 * this should be done in house, i.e., inside the link model. (Updated from the upstream border)
 	 * @param flow
 	 * @param timeIndx
 	 */
-	public void updateNxl(double flow, int timeInd); 
+	public void updateNxl(double flow, int timeInd,double[]dNxl); 
 	/**
 	 * update the path specific boundary cumulative flow for timeIndex timeIndx at x0
 	 * @param flow
 	 * @param timeIndx
 	 */
-	public void updateNrx0(double flow,int routeIndx,int timeIndx);
+	public void updateNrx0(double flow,NetworkRoute route,int timeIndx,double[]dNrx0);
 	/**
 	 * update the path specific boundary cumulative flow for timeIndex timeIndx at xl
 	 * @param flow
 	 * @param timeIndx
 	 */
-	public void updateNrxl(double flow,int routeIndx, int timeInd); 
+	public void updateNrxl(double flow,NetworkRoute route, int timeInd,double[]dNrxl); 
 	
 	/**
 	 * Get the path specific output cumulative vehicle boundary conditions all through the simulation at x0
@@ -86,6 +96,8 @@ public interface LinkModel {
 	 * @return
 	 */
 	public double[][] getNrxl();
+	
+
 	/**
 	 * Get the output cumulative vehicle boundary conditions all through the simulation at x0
 	 * @return
@@ -97,15 +109,29 @@ public interface LinkModel {
 	 */
 	public double[] getNxl();
 	
+	
 	public double[] getK();
 
-	public MapToArray getRoutes();
+	public MapToArray<NetworkRoute> getRoutes();
 
 	public int getTimeindexNo();
 	/**
 	 * This function should set up the internal state of the link model for gradient estimations 
 	 * @param variables
 	 */
-	public void setOptimizationVariables(MapToArray variables);
+	public void setOptimizationVariables(MapToArray<VariableDetails> variables);
 
+	double[][][] getdNrx0();
+
+	double[][] getNrxldt();
+
+	double[][][] getdNrxl();
+
+	double[] getNx0dt();
+	double[][] getdNx0();
+	double[][] getdNxl();
+	
+	double[] getNxldt();
+
+	double[][] getNrx0dt();
 }

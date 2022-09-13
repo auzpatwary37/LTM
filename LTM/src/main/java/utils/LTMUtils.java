@@ -1,10 +1,18 @@
 package utils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import org.apache.commons.math.linear.MatrixUtils;
 import org.apache.commons.math.linear.RealVector;
+import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.network.Link;
+import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.utils.collections.Tuple;
 
 /**
@@ -74,6 +82,85 @@ public class LTMUtils{
 		return new Tuple<>(pCap,pCapGrad);
 	}
 	
+	
+	/**
+	 * 
+	 * @param weights 
+	 * @param weightGradients
+	 * 
+	 * calculates the gradient of the following function
+	 * 
+	 * Y = X./Sum(X)(matlab syntax) 
+	 * X is the vector containing the weights of the proportions to be distributed. 
+	 * Y is the vector of distributed proportion. 
+	 * 
+	 * The variable names are already self explanatory
+	 * 
+	 *  should work when the weights gradients is null or empty the second element in the return tuple will be null in that case.
+	 * 
+	 * @return
+	 */
+	public static Tuple<double[],List<double[]>> calculateRatioAndGradient(double[] weights, List<double[]> weightGradients){
+		double[] p = new double[weights.length];
+		List<RealVector> pGrads =null;
+		
+		double sum = 0;
+		RealVector sumGradient = null;
+		if(weightGradients !=null &&  !weightGradients.isEmpty()) {
+			sumGradient = MatrixUtils.createRealVector(new double[weightGradients.get(0).length]);
+			pGrads = new ArrayList<>();
+		}
+		
+		for(int i=0;i<weights.length;i++) {
+			sum+=weights[i];
+			if(weightGradients != null && !weightGradients.isEmpty()) {
+				sumGradient = sumGradient.add(MatrixUtils.createRealVector(weightGradients.get(i)));
+			}
+		}
+		if(sum==0)throw new IllegalArgumentException("The sum of the weights cannot be zero!!!");
+		for(int i=0;i<weights.length;i++) {
+			p[i]=weights[i]/sum;
+			if(weightGradients != null && !weightGradients.isEmpty()) {
+				RealVector pGrad = MatrixUtils.createRealVector(weightGradients.get(i)).mapMultiply(sum).subtract(sumGradient.mapMultiply(weights[i])).mapDivide(sum*sum);
+				pGrads.add(pGrad);
+			}
+		}
+		
+		return new Tuple<>(p,pGrads.stream().map(r->r.getData()).collect(Collectors.toList()));
+	}
+	
+	public static <T> Map<T,Tuple<Double,double[]>> calculateRatioAndGradient(Map<T,Double> weights, Map<T,double[]> weightGradients){
+		Map<T,Double> p = new HashMap<>();
+		Map<T,RealVector> pGrads =new HashMap<>();
+		
+		double sum = 0;
+		RealVector sumGradient = null;
+//		if(weightGradients !=null &&  !weightGradients.isEmpty()) {
+//			sumGradient = MatrixUtils.createRealVector(new double[weightGradients.get(0).length]);
+//		}
+		for(Entry<T, Double> w:weights.entrySet()) {
+			sum+=w.getValue();
+			if(weightGradients != null && !weightGradients.isEmpty()) {
+				if(sumGradient == null)sumGradient= MatrixUtils.createRealVector(weightGradients.get(w.getKey()));
+				else sumGradient = sumGradient.add(weightGradients.get(w.getKey()));
+			}
+		}
+		
+		if(sum==0)throw new IllegalArgumentException("The sum of the weights cannot be zero!!!");
+		
+		for(Entry<T, Double> d:weights.entrySet()) {
+			p.put(d.getKey(),d.getValue()/sum);
+			if(weightGradients != null && !weightGradients.isEmpty()) {
+				RealVector pGrad = MatrixUtils.createRealVector(weightGradients.get(d.getKey())).mapMultiply(sum).subtract(sumGradient.mapMultiply(weights.get(d.getKey()))).mapDivide(sum*sum);
+				pGrads.put(d.getKey(),pGrad);
+			}
+		}
+		Map<T,Tuple<Double,double[]>>out = new HashMap<>();
+		for(T k:p.keySet()) {
+			out.put(k, new Tuple<>(p.get(k),pGrads.get(k).getData()));
+		}
+		return out;
+	}
 	/**
 	 * 
 	 * @param X tuple of X1 and X2, assumed sorted with X1<X2, though might not be necessary
@@ -117,5 +204,22 @@ public class LTMUtils{
 		
 	}
 	
+	public boolean routeEquals(NetworkRoute r1, NetworkRoute r2) {
+		return r1.toString().equals(r2.toString());
+	}
+	
+	public static Id<Link> findNextLink(NetworkRoute r,Id<Link> fromLink) {
+		int k = 1;
+		if(r.getStartLinkId().equals(fromLink))return r.getLinkIds().get(0);
+		else if(r.getEndLinkId().equals(fromLink))return null;
+		else if(r.getLinkIds().get(r.getLinkIds().size()-1).equals(fromLink))return r.getEndLinkId();
+		else{
+			for(Id<Link> lId:r.getLinkIds()) {
+				if(lId.equals(fromLink))return r.getLinkIds().get(k);
+				k++;
+			}
+		}
+		return null;
+	}
 	
 }

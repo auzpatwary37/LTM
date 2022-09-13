@@ -1,17 +1,31 @@
 package linkModels;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.commons.math.linear.MatrixUtils;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.population.Route;
+import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.utils.collections.Tuple;
 
-import ust.hk.praisehk.metamodelcalibration.Utils.MapToArray;
 import utils.LTMUtils;
+import utils.MapToArray;
+import utils.TuplesOfThree;
+import utils.VariableDetails;
 
+/**
+ * 
+ * @author ashrafzaman
+ *
+ */
 
 public class GenericLinkModel implements LinkModel{
 	private final Link link;
 	private double[] timePoints;// time slots
-	private double[][] Nrx0;// flow at x0 for route r
+	private double[][] Nrx0;// flow at x0 for route r//note: this will be set from the node model directly. 
+	// For source nodes, this term will be instatiated from the route demand. Summing up all the Nrx0 at a certain time step 
+	// should provide for the Nx0. The rest of the time, this term will come from the node model G_ij assuming FIFO behavior
 	private double[][] Nrx0dt;//timegradient of Nrx0
 	private double[][][]dNrx0;// gradient of flow at x0 for route r
 	private double[][] Nrxl;//flow at xl for route r
@@ -30,11 +44,11 @@ public class GenericLinkModel implements LinkModel{
 	private double[] Sdt;//time gradient of S
 	private double[] Rdt;//time gradient of R
 	private double[]k;// number of vehicles on the road 
-	private MapToArray routes;// map to array converter for the routes on this link
+	private MapToArray<NetworkRoute> routes;// map to array converter for the routes on this link
 	private int T;//The number of time slots
 	private FD fd;// Triangular fundamental diagram with vf, vw, qm, kj
 	private double delT;//length of each time slots
-	private MapToArray variables;//Map to array converter for variables to calculate gradient with respect to
+	private MapToArray<VariableDetails> variables;//Map to array converter for variables to calculate gradient with respect to, this can be shared all over
 	
 //	private double[][][] dNrx0;
 //	private double[][][] dNrxl;
@@ -49,7 +63,7 @@ public class GenericLinkModel implements LinkModel{
 		this.fd = new FD(l);
 	}
 	
-	public void setOptimizationVariables(MapToArray variables) {
+	public void setOptimizationVariables(MapToArray<VariableDetails> variables) {
 		this.variables = variables;
 		this.dNx0 = new double[this.T][this.variables.getKeySet().size()];
 		this.dNxl = new double[this.T][this.variables.getKeySet().size()];
@@ -60,11 +74,11 @@ public class GenericLinkModel implements LinkModel{
 	}
 	
 	@Override
-	public void setLTMTimeBeanAndRouteSet(double[]timePoints, MapToArray routes) {
+	public void setLTMTimeBeanAndRouteSet(double[]timePoints, MapToArray<NetworkRoute> routes) {
 		this.timePoints = timePoints;
 		this.T = timePoints.length;
 		this.delT = timePoints[1]-timePoints[0];
-		this.routes = routes;
+ 		this.routes = routes;
 		Nrx0 = new double[routes.getKeySet().size()][T];
 		Nrx0dt = new double[routes.getKeySet().size()][T];
 		Nrxl = new double[routes.getKeySet().size()][T];
@@ -83,7 +97,6 @@ public class GenericLinkModel implements LinkModel{
 	@Override
 	public int getTimeIndex(double t) {
 		for(int i = 0; i<timePoints.length;i++) {
-			
 			if(t>=timePoints[i])return i;
 		}
 		return 0;
@@ -91,7 +104,7 @@ public class GenericLinkModel implements LinkModel{
 
 
 	@Override
-	public Tuple<double[],double[][]> getSendingFlow(int timeIdx) {
+	public TuplesOfThree<double[],double[],double[][]> getSendingFlow(int timeIdx) {
 		
 			double t = timePoints[timeIdx]+delT-fd.L/fd.vf;// get the time index which flow is relevant
 			int tl = this.getTimeIndex(t);// get the time point which is just lower that t
@@ -124,13 +137,13 @@ public class GenericLinkModel implements LinkModel{
 			}
 			this.S[timeIdx] = s;
 		
-		return new Tuple<>(S,dS);// the sending flow is the min between this two term 
+		return new TuplesOfThree<>(S,Sdt,dS);// the sending flow is the min between this two term 
 	}
 
 
 
 	@Override
-	public Tuple<double[],double[][]> getRecivingFlow(int timeIdx) {
+	public TuplesOfThree<double[],double[],double[][]> getRecivingFlow(int timeIdx) {
 		//for(int timeIdx = 0; timeIdx<this.T;timeIdx++) {
 		double t = timePoints[timeIdx]+delT-fd.L/fd.wf;// get the time index which flow is relevant
 		if(t>0) {
@@ -166,36 +179,43 @@ public class GenericLinkModel implements LinkModel{
 			this.R[timeIdx] = r;
 		}
 		//}
-		return new Tuple<>(R,dR);// the sending flow is the min between this two term 
+		return new TuplesOfThree<>(R,Rdt,dR);// the sending flow is the min between this two term 
 	}
 
 
 
 	@Override
-	public void updateNx0(double flow, int timeIndx) {
+	public void updateNx0(double flow, int timeIndx,double[] dNx0) {
 		this.Nx0[timeIndx] = flow;
+		if(dNx0!=null)this.dNx0[timeIndx]=dNx0;
 	}
 
 
 
 	@Override
-	public void updateNxl(double flow, int timeInd) {
+	public void updateNxl(double flow, int timeInd,double[] dNxl) {
 		this.Nxl[timeInd] = flow;
-		
+		if(dNxl!=null)this.dNxl[timeInd]=dNxl;
 	}
 
 
 
 	@Override
-	public void updateNrx0(double flow, int routeIndx, int timeIndx) {
-		this.Nrx0[routeIndx][timeIndx] = flow;
+	public void updateNrx0(double flow, NetworkRoute route, int timeIndx,double[] dNrx0) {
+		int ind = this.routes.getIndex(route);
+		if(ind ==-1)throw new IllegalArgumentException("Route not present in the route list!!! Debug!!!");
+		this.Nrx0[ind][timeIndx] = flow;
+		if(dNrx0!=null)this.dNrx0[ind][timeIndx]=dNrx0;
 	}
 
 
 
 	@Override
-	public void updateNrxl(double flow, int routeIndx, int timeInd) {
-		this.Nrxl[routeIndx][timeInd] = flow;
+	public void updateNrxl(double flow, NetworkRoute route, int timeInd,double[] dNrxl) {
+		int ind = this.routes.getIndex(route);
+		if(ind ==-1)throw new IllegalArgumentException("Route not present in the route list!!! Debug!!!");
+		this.Nrxl[ind][timeInd] = flow;
+		if(dNrxl!=null)this.dNrxl[ind][timeInd]=dNrxl;
 	}
 	
 	//_____________________________Getter Setter_________________________________________________
@@ -247,16 +267,76 @@ public class GenericLinkModel implements LinkModel{
 
 
 	@Override
-	public MapToArray getRoutes() {
+	public MapToArray<NetworkRoute> getRoutes() {
 		return routes;
 	}
+	
 
+	@Override
+	public double[][][] getdNrx0() {
+		return dNrx0;
+	}
+	@Override
+	public double[][] getNrxldt() {
+		return Nrxldt;
+	}
+	@Override
+	public double[][][] getdNrxl() {
+		return dNrxl;
+	}
+	@Override
+	public double[] getNx0dt() {
+		return Nx0dt;
+	}
+	@Override
+	public double[][] getNrx0dt() {
+		return Nrx0dt;
+	}
 
+	public double[][] getdNx0() {
+		return dNx0;
+	}
+
+	public double[] getNxldt() {
+		return Nxldt;
+	}
+
+	public double[][] getdNxl() {
+		return dNxl;
+	}
 
 	@Override
 	public int getTimeindexNo() {
 		return T;
 	}
+
+//	@Override
+//	public Tuple<Map<NetworkRoute, Double>,Map<NetworkRoute,double[]>> getNrxl(int timeIndex) {
+//		Map<NetworkRoute,Double> flow = new HashMap<>();
+//		Map<NetworkRoute,double[]> flowGrad = new HashMap<>();
+//		
+//		int k = 0;
+//		for(NetworkRoute r:this.routes.getKeySet()) {
+//			flow.put(r, this.Nrxl[k][timeIndex]);
+//			flowGrad.put(r, this.dNrxl[k][timeIndex]);
+//			k++;
+//		}
+//		return new Tuple<>(flow,flowGrad);
+//	}
+//
+//	@Override
+//	public Tuple<Map<NetworkRoute, Double>,Map<NetworkRoute,double[]>> getNrx0(int timeIndex) {
+//		Map<NetworkRoute,Double> flow = new HashMap<>();
+//		Map<NetworkRoute,double[]> flowGrad = new HashMap<>();
+//		
+//		int k = 0;
+//		for(NetworkRoute r:this.routes.getKeySet()) {
+//			flow.put(r, this.Nrx0[k][timeIndex]);
+//			flowGrad.put(r, this.dNrx0[k][timeIndex]);
+//			k++;
+//		}
+//		return new Tuple<>(flow,flowGrad);
+//	}
 
 
 }
@@ -285,7 +365,7 @@ class FD{
 	}
 	
 	public FD(Link link) {
-		this(link.getLength(),link.getFreespeed(),link.getFlowCapacityPerSec(),0.15);
+		this(link.getLength(),link.getFreespeed(),link.getFlowCapacityPerSec(),0.15);// K_j = 0.15 is assuming a jam density of 250 veh/mile
 	}
 	
 }
