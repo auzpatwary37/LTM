@@ -222,4 +222,19 @@ public class LTMUtils{
 		return null;
 	}
 	
+	public static TuplesOfThree<Double,Double,double[]> calcAbyBGrad(TuplesOfThree<Double,Double,double[]> A, TuplesOfThree<Double,Double,double[]> B){
+		Double abyb = A.getFirst()/B.getFirst();
+		double bsquare = Math.pow(B.getFirst(), 2);
+		double[] grad = MatrixUtils.createRealVector(A.getThird()).mapMultiply(B.getFirst()).subtract(MatrixUtils.createRealVector(B.getThird()).mapMultiply(A.getFirst())).mapDivide(bsquare).getData();//(bda-adb)/b^2
+		Double dt = (B.getFirst()*A.getSecond()-A.getFirst()*B.getSecond())/bsquare;
+		return new TuplesOfThree<>(abyb,dt,grad);
+	}
+	
+	public static TuplesOfThree<Double,Double,double[]> calcAtimesBGrad(TuplesOfThree<Double,Double,double[]> A, TuplesOfThree<Double,Double,double[]> B){
+		Double abyb = A.getFirst()*B.getFirst();
+		
+		double[] grad = MatrixUtils.createRealVector(A.getThird()).mapMultiply(B.getFirst()).add(MatrixUtils.createRealVector(B.getThird()).mapMultiply(A.getFirst())).getData();//(bda+adb)
+		Double dt = (B.getFirst()*A.getSecond()+A.getFirst()*B.getSecond());
+		return new TuplesOfThree<>(abyb,dt,grad);
+	}
 }

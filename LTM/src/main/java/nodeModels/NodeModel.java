@@ -42,4 +42,15 @@ public interface NodeModel {
 	 * @param timeStep
 	 */
 	public void updateFlow(int timeStep);
+
+	/**
+	 * This should run all necessary step of calculation inside a node model to advance the LTM for timeStep
+	 * @param timeStep
+	 */
+	public void performLTMStep(int timeStep);
+
+	/**
+	 * This function should set up the MapToArray for routes and T and variables inside the node and link models
+	 */
+	public void setTimeStepAndRoutes();
 }

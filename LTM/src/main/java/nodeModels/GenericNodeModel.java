@@ -1,10 +1,11 @@
 package nodeModels;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.math.linear.MatrixUtils;
 import org.apache.commons.math.linear.RealVector;
@@ -24,7 +25,7 @@ import utils.VariableDetails;
 public class GenericNodeModel implements NodeModel{
 	
 	private final Node node;
-	
+	private NodeModelAlgorithm algo;//maybe later can be implemented to change the node model algo
 	private int T;//The number of time slots
 	private Map<Id<Link>,LinkModel> inLinkModels = new HashMap<>();// Link models for all the in links
 	private Map<Id<Link>,LinkModel> outLinkModels = new HashMap<>();// Link models for all the out links 
@@ -79,11 +80,14 @@ public class GenericNodeModel implements NodeModel{
 		
 		
 	}
-
+	@Override
 	public void setTimeStepAndRoutes() {
 		
 	}
 
+	public void setOptimizationVariables(MapToArray<VariableDetails> variables) {
+		
+	}
 
 
 	@Override
@@ -143,56 +147,324 @@ public class GenericNodeModel implements NodeModel{
 		
 	@Override
 	public void applyNodeModel(int timeStep) {
-		
-		
+		int k = 0;
+		int maxK = 10;
+		Map<Id<Link>,Map<Id<Link>,Double>>R_ij = new HashMap<>();
+		Map<Id<Link>,Map<Id<Link>,Double>>R_ijdt = new HashMap<>();
+		Map<Id<Link>,Map<Id<Link>,double[]>>dR_ij = new HashMap<>();
+
+		Map<Id<Link>,Map<Id<Link>,Double>>g_ij = new HashMap<>();
+		Map<Id<Link>,Map<Id<Link>,Double>>g_ijdt = new HashMap<>();
+		Map<Id<Link>,Map<Id<Link>,double[]>>dg_ij = new HashMap<>();
+
+		Set<Id<Link>> Iprime = new HashSet<>();
+		Set<Id<Link>> I = new HashSet<>();
+		Map<Id<Link>,Double> sumgbyctimesqmij = new HashMap<>();
+		//Initialization
+		for(LinkModel i:this.inLinkModels.values()) {
+			for(LinkModel j:this.outLinkModels.values()) {
+				if(!R_ij.containsKey(i.getLink().getId())) {
+					R_ij.put(i.getLink().getId(), new HashMap<>());
+					dR_ij.put(i.getLink().getId(), new HashMap<>());
+					R_ijdt.put(i.getLink().getId(), new HashMap<>());
+
+				}
+				//For now lets assume the turning capacity is 1800, i.e, the same
+				double cap = 1800;//this can be inserted somehow, but from MATSim alone, I do not think so. 
+				double gbyc = 1;//this can be extracted from matsim HK.
+				sumgbyctimesqmij.compute(j.getLink().getId(), (kk,v)->v==null?gbyc*cap:v+gbyc*cap);
+
+			}
+		}
+		for(LinkModel i:this.inLinkModels.values()) {
+			for(LinkModel j:this.outLinkModels.values()) {//calculate Rij_0
+
+				//if(!R_ij.containsKey(i.getLink().getId()))R_ij.put(i.getLink().getId(), new HashMap<>());
+				//For now lets assume the turning capacity is 1800, i.e, the same
+				double cap = 1800;//this can be inserted somehow, but from MATSim alone, I do not think so. 
+				double gbyc = 1;//this can be extracted from matsim HK.
+				R_ij.get(i.getLink().getId()).put(j.getLink().getId(),cap*gbyc/sumgbyctimesqmij.get(j.getLink().getId())*this.R_j.get(j.getLink().getId())[timeStep]);
+				dR_ij.get(i.getLink().getId()).put(j.getLink().getId(), 
+						MatrixUtils.createRealVector(this.dR_j.get(j.getLink().getId())[timeStep]).mapMultiply(cap*gbyc/sumgbyctimesqmij.get(j.getLink().getId())).getData());
+				R_ijdt.get(i.getLink().getId()).put(j.getLink().getId(), cap*gbyc/sumgbyctimesqmij.get(j.getLink().getId())*this.R_jdt.get(j.getLink().getId())[timeStep]);
+			}
+		}
+		//Find out the most limiting constriant and its gradient
+		for(LinkModel i:this.inLinkModels.values()) {
+
+			double constraint = 1;
+			double[] dConstraint = new double[this.variables.getKeySet().size()];
+			double constraintdt = 1;
+
+			for(LinkModel j:this.outLinkModels.values()) {//find out the most active constraint
+				double cap = 1800;//this can be inserted somehow, but from MATSim alone, I do not think so. 
+				double gbyc = 1;
+				double qnij = cap*gbyc;
+				double sij = this.S_ij.get(i.getLink().getId()).get(j.getLink().getId())[timeStep];
+
+				double qbys = qnij/sij;
+
+				if(qbys<constraint) {
+					constraint = qbys;
+					dConstraint = MatrixUtils.createRealVector(this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())[timeStep]).mapMultiply(-1*qnij/Math.pow(sij,2)).getData();
+					constraintdt = -1*qnij/Math.pow(sij,2)*this.S_ijdt.get(i.getLink().getId()).get(j.getLink().getId())[timeStep];
+				}
+
+				double RijbySij = R_ij.get(i.getLink().getId()).get(j.getLink().getId())/sij;
+
+				if(RijbySij<constraint) {
+					constraint = RijbySij;
+					TuplesOfThree<Double, Double, double[]> a = LTMUtils.calcAbyBGrad(new TuplesOfThree<>(R_ij.get(i.getLink().getId()).get(j.getLink().getId()),
+							R_ijdt.get(i.getLink().getId()).get(j.getLink().getId()),
+							dR_ij.get(i.getLink().getId()).get(j.getLink().getId())), 
+							new TuplesOfThree<>(sij,this.S_ijdt.get(i.getLink().getId()).get(j.getLink().getId())[timeStep],this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())[timeStep]));
+					dConstraint = a.getThird();
+					constraintdt = a.getSecond();
+				}
+
+
+			}
+			for(LinkModel j:this.outLinkModels.values()) {//calculate Gij using the most limiting constraint 
+				if(!g_ij.containsKey(i.getLink().getId())) {
+					g_ij.put(i.getLink().getId(), new HashMap<>());
+					dg_ij.put(i.getLink().getId(), new HashMap<>());
+					g_ijdt.put(i.getLink().getId(), new HashMap<>());
+
+				}
+				TuplesOfThree<Double,Double,double[]> gij = LTMUtils.calcAtimesBGrad(new TuplesOfThree<>(constraint,constraintdt,dConstraint), 
+						new TuplesOfThree<>(this.S_ij.get(i.getLink().getId()).get(j.getLink().getId())[timeStep],
+								this.S_ijdt.get(i.getLink().getId()).get(j.getLink().getId())[timeStep],this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())[timeStep]));
+				g_ij.get(i.getLink().getId()).put(j.getLink().getId(), gij.getFirst());
+				dg_ij.get(i.getLink().getId()).put(j.getLink().getId(), gij.getThird());
+				g_ijdt.get(i.getLink().getId()).put(j.getLink().getId(), gij.getSecond());
+
+			}
+
+
+		}
+		//Calculate sets I and I'
+		for(LinkModel i:this.inLinkModels.values()) {
+			boolean isIprime = true;
+			for(LinkModel j:this.outLinkModels.values()) {
+				double cap = 1800;//this can be inserted somehow, but from MATSim alone, I do not think so. 
+				double gbyc = 1;
+				double qnij = cap*gbyc;
+				if(g_ij.get(i.getLink().getId()).get(j.getLink().getId())-R_ij.get(i.getLink().getId()).get(j.getLink().getId())<0.001
+						&& R_ij.get(i.getLink().getId()).get(j.getLink().getId())<this.S_ij.get(i.getLink().getId()).get(j.getLink().getId())[timeStep]
+								&& R_ij.get(i.getLink().getId()).get(j.getLink().getId())<qnij) {
+
+				}else {
+					isIprime = false;
+					break;
+				}
+			}
+			if(isIprime)Iprime.add(i.getLink().getId());
+			else I.add(i.getLink().getId());
+		}
+
+		if(I.size()==0 || Iprime.size()==0) {
+			for(LinkModel i:this.inLinkModels.values()){
+				for(LinkModel j:this.outLinkModels.values()) {
+					if(!this.G_ij.containsKey(i.getLink().getId())) {
+						this.G_ij.put(i.getLink().getId(), new HashMap<>());
+						this.G_ijdt.put(i.getLink().getId(),new HashMap<>());
+						this.dG_ij.put(i.getLink().getId(), new HashMap<>());
+					}
+					if(!this.G_ij.get(i.getLink().getId()).containsKey(j.getLink().getId())) {
+						this.G_ij.get(i.getLink().getId()).put(j.getLink().getId(), new double[T]);
+						this.G_ijdt.get(i.getLink().getId()).put(j.getLink().getId(), new double[T]);
+						this.dG_ij.get(i.getLink().getId()).put(j.getLink().getId(), new double[T][this.variables.getKeySet().size()]);
+					}
+					this.G_ij.get(i.getLink().getId()).get(j.getLink().getId())[timeStep] = g_ij.get(i.getLink().getId()).get(j.getLink().getId());
+					this.G_ijdt.get(i.getLink().getId()).get(j.getLink().getId())[timeStep] = g_ijdt.get(i.getLink().getId()).get(j.getLink().getId());
+					this.dG_ij.get(i.getLink().getId()).get(j.getLink().getId())[timeStep] = dg_ij.get(i.getLink().getId()).get(j.getLink().getId());
+				}
+
+			}
+			return;
+		}
+		//According to the thesis initialization finished. 
+
+		for(k = 0;k<maxK;k++) {
+			
+			Map<Id<Link>,Double> remainingRj = new HashMap<>();
+			Map<Id<Link>,Double> remainingRjdt = new HashMap<>();
+			Map<Id<Link>,RealVector> dremainingRj = new HashMap<>();
+
+			for(LinkModel i:this.inLinkModels.values()) {//Calculate Rij
+				if(I.contains(i.getLink().getId())) {
+					for(LinkModel j:this.outLinkModels.values()) {
+						double remainingCap = R_ij.get(i.getLink().getId()).get(j.getLink().getId())-g_ij.get(i.getLink().getId()).get(j.getLink().getId());
+						double remainingCapdt = R_ijdt.get(i.getLink().getId()).get(j.getLink().getId())-g_ijdt.get(i.getLink().getId()).get(j.getLink().getId());
+						RealVector dremainingCap = MatrixUtils.createRealVector(dR_ij.get(i.getLink().getId()).get(j.getLink().getId())).subtract(dg_ij.get(i.getLink().getId()).get(j.getLink().getId()));
+						remainingRj.compute(j.getLink().getId(), (kk,v)->v==null?remainingCap:v+remainingCap);
+						remainingRjdt.compute(j.getLink().getId(), (kk,v)->v==null?remainingCapdt:v+remainingCapdt);
+						dremainingRj.compute(j.getLink().getId(), (kk,v)->v==null?dremainingCap:v.add(dremainingCap));
+					}
+				}	
+			}
+			
+			for(LinkModel i:this.inLinkModels.values()) {//Calculate Rij
+				if(Iprime.contains(i.getLink().getId())) {
+					for(LinkModel j:this.outLinkModels.values()) {
+						R_ij.get(i.getLink().getId()).put(j.getLink().getId(),
+								R_ij.get(i.getLink().getId()).get(j.getLink().getId())+1/Iprime.size()*remainingRj.get(j.getLink().getId()));
+						R_ijdt.get(i.getLink().getId()).put(j.getLink().getId(),
+								R_ijdt.get(i.getLink().getId()).get(j.getLink().getId())+1/Iprime.size()*remainingRjdt.get(j.getLink().getId()));
+						dR_ij.get(i.getLink().getId()).put(j.getLink().getId(),
+								MatrixUtils.createRealVector(dR_ij.get(i.getLink().getId()).get(j.getLink().getId())).add(dremainingRj.get(j.getLink().getId()).mapMultiply(1/Iprime.size())).getData());
+					}
+				}	
+			}
+			//Find out the most limiting constriant and its gradient
+			for(LinkModel i:this.inLinkModels.values()) {
+				if(Iprime.contains(i.getLink().getId())) {
+					double constraint = 1;
+					double[] dConstraint = new double[this.variables.getKeySet().size()];
+					double constraintdt = 1;
+
+					for(LinkModel j:this.outLinkModels.values()) {//find out the most active constraint
+						double cap = 1800;//this can be inserted somehow, but from MATSim alone, I do not think so. 
+						double gbyc = 1;
+						double qnij = cap*gbyc;
+						double sij = this.S_ij.get(i.getLink().getId()).get(j.getLink().getId())[timeStep];
+
+						double qbys = qnij/sij;
+
+						if(qbys<constraint) {
+							constraint = qbys;
+							dConstraint = MatrixUtils.createRealVector(this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())[timeStep]).mapMultiply(-1*qnij/Math.pow(sij,2)).getData();
+							constraintdt = -1*qnij/Math.pow(sij,2)*this.S_ijdt.get(i.getLink().getId()).get(j.getLink().getId())[timeStep];
+						}
+
+						double RijbySij = R_ij.get(i.getLink().getId()).get(j.getLink().getId())/sij;
+
+						if(RijbySij<constraint) {
+							constraint = RijbySij;
+							TuplesOfThree<Double, Double, double[]> a = LTMUtils.calcAbyBGrad(new TuplesOfThree<>(R_ij.get(i.getLink().getId()).get(j.getLink().getId()),
+									R_ijdt.get(i.getLink().getId()).get(j.getLink().getId()),
+									dR_ij.get(i.getLink().getId()).get(j.getLink().getId())), 
+									new TuplesOfThree<>(sij,this.S_ijdt.get(i.getLink().getId()).get(j.getLink().getId())[timeStep],this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())[timeStep]));
+							dConstraint = a.getThird();
+							constraintdt = a.getSecond();
+						}
+
+
+					}
+					for(LinkModel j:this.outLinkModels.values()) {//calculate Gij using the most limiting constraint 
+						if(!g_ij.containsKey(i.getLink().getId())) {
+							g_ij.put(i.getLink().getId(), new HashMap<>());
+							dg_ij.put(i.getLink().getId(), new HashMap<>());
+							g_ijdt.put(i.getLink().getId(), new HashMap<>());
+
+						}
+						TuplesOfThree<Double,Double,double[]> gij = LTMUtils.calcAtimesBGrad(new TuplesOfThree<>(constraint,constraintdt,dConstraint), 
+								new TuplesOfThree<>(this.S_ij.get(i.getLink().getId()).get(j.getLink().getId())[timeStep],
+										this.S_ijdt.get(i.getLink().getId()).get(j.getLink().getId())[timeStep],this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())[timeStep]));
+						g_ij.get(i.getLink().getId()).put(j.getLink().getId(), gij.getFirst());
+						dg_ij.get(i.getLink().getId()).put(j.getLink().getId(), gij.getThird());
+						g_ijdt.get(i.getLink().getId()).put(j.getLink().getId(), gij.getSecond());
+
+					}
+				}
+
+			}
+			//Update the sets I and Iprime
+			Set<Id<Link>> newI = new HashSet<>();
+			Set<Id<Link>> newIprime = new HashSet<>();
+			
+			Iprime.forEach(i->{
+				boolean isIprime = true;
+				for(LinkModel j:this.outLinkModels.values()) {
+					double cap = 1800;//this can be inserted somehow, but from MATSim alone, I do not think so. 
+					double gbyc = 1;
+					double qnij = cap*gbyc;
+					if(g_ij.get(i).get(j.getLink().getId())-R_ij.get(i).get(j.getLink().getId())<0.001
+							&& R_ij.get(i).get(j.getLink().getId())<this.S_ij.get(i).get(j.getLink().getId())[timeStep]
+									&& R_ij.get(i).get(j.getLink().getId())<qnij) {
+
+					}else {
+						isIprime = false;
+						break;
+					}
+				}
+				if(isIprime)newIprime.add(i);
+				else newI.add(i);
+			});
+			I = newI;
+			Iprime = newIprime;
+			if(I.size()==0 || Iprime.size()==0) {
+				break;
+			}	
+		}
+		for(LinkModel i:this.inLinkModels.values()){
+			for(LinkModel j:this.outLinkModels.values()) {
+				if(!this.G_ij.containsKey(i.getLink().getId())) {
+					this.G_ij.put(i.getLink().getId(), new HashMap<>());
+					this.G_ijdt.put(i.getLink().getId(),new HashMap<>());
+					this.dG_ij.put(i.getLink().getId(), new HashMap<>());
+				}
+				if(!this.G_ij.get(i.getLink().getId()).containsKey(j.getLink().getId())) {
+					this.G_ij.get(i.getLink().getId()).put(j.getLink().getId(), new double[T]);
+					this.G_ijdt.get(i.getLink().getId()).put(j.getLink().getId(), new double[T]);
+					this.dG_ij.get(i.getLink().getId()).put(j.getLink().getId(), new double[T][this.variables.getKeySet().size()]);
+				}
+				this.G_ij.get(i.getLink().getId()).get(j.getLink().getId())[timeStep] = g_ij.get(i.getLink().getId()).get(j.getLink().getId());
+				this.G_ijdt.get(i.getLink().getId()).get(j.getLink().getId())[timeStep] = g_ijdt.get(i.getLink().getId()).get(j.getLink().getId());
+				this.dG_ij.get(i.getLink().getId()).get(j.getLink().getId())[timeStep] = dg_ij.get(i.getLink().getId()).get(j.getLink().getId());
+			}
+
+		}
+		return;
+
 	}
 
 
 	@Override
 	public void updateFlow(int timeStep) {
-		
+
 		Map<Id<Link>,Double> gi = new HashMap<>();
 		Map<Id<Link>,Double> gidt = new HashMap<>();
 		Map<Id<Link>,double[]> dgi = new HashMap<>();
-		
+
 		Map<Id<Link>,Double> gj = new HashMap<>();
 		Map<Id<Link>,Double> gjdt = new HashMap<>();
 		Map<Id<Link>,double[]> dgj = new HashMap<>();
-		
-		
+
+
 		this.inLinkModels.entrySet().forEach(inLink->{
-			
+
 			for(Entry<Id<Link>, double[]> d:this.G_ij.get(inLink.getKey()).entrySet()){
 				//update gi
 				gi.compute(inLink.getKey(), (k,v)->v==null?d.getValue()[timeStep]:v+d.getValue()[timeStep]);
 				gidt.compute(inLink.getKey(), (k,v)->v==null?this.G_ijdt.get(inLink.getKey()).get(d.getKey())[timeStep]:v+this.G_ijdt.get(inLink.getKey()).get(d.getKey())[timeStep]);
 				dgi.compute(inLink.getKey(), (k,v)->v==null?this.dG_ij.get(inLink.getKey()).get(d.getKey())[timeStep]:
 					MatrixUtils.createRealVector(this.dG_ij.get(inLink.getKey()).get(d.getKey())[timeStep]).add(v).getData());
-				
+
 				//update gj
 				gj.compute(d.getKey(), (k,v)->v==null?d.getValue()[timeStep]:v+d.getValue()[timeStep]);
 				gjdt.compute(d.getKey(), (k,v)->v==null?this.G_ijdt.get(inLink.getKey()).get(d.getKey())[timeStep]:v+this.G_ijdt.get(inLink.getKey()).get(d.getKey())[timeStep]);
 				dgj.compute(d.getKey(), (k,v)->v==null?this.dG_ij.get(inLink.getKey()).get(d.getKey())[timeStep]:
 					MatrixUtils.createRealVector(this.dG_ij.get(inLink.getKey()).get(d.getKey())[timeStep]).add(v).getData());
 			}
-			
+
 		});
-		
+
 		//update of Nxl and Nx0 at time step timeStep+1
 		for(Entry<Id<Link>, LinkModel> inLink:this.inLinkModels.entrySet()) {
 			inLink.getValue().getNxl()[timeStep+1] = inLink.getValue().getNxl()[timeStep]+gi.get(inLink.getKey());
 			inLink.getValue().getdNxl()[timeStep+1] = MatrixUtils.createRealVector(inLink.getValue().getdNxl()[timeStep]).add(dgi.get(inLink.getKey())).getData();
 			inLink.getValue().getNxldt()[timeStep+1] = inLink.getValue().getNxldt()[timeStep]+gidt.get(inLink.getKey());
 		}
-		
+
 		for(Entry<Id<Link>, LinkModel> outLink:this.outLinkModels.entrySet()) {
 			outLink.getValue().getNx0()[timeStep+1] = outLink.getValue().getNx0()[timeStep]+gj.get(outLink.getKey());
 			outLink.getValue().getdNx0()[timeStep+1] = MatrixUtils.createRealVector(outLink.getValue().getdNx0()[timeStep]).add(dgj.get(outLink.getKey())).getData();
 			outLink.getValue().getNx0dt()[timeStep+1] = outLink.getValue().getNx0dt()[timeStep]+gjdt.get(outLink.getKey());
 		}
-		
+
 		//Update the route specific flow first at the end of the inLinks
-		
+
 		for(Entry<Id<Link>, LinkModel> inLink:this.inLinkModels.entrySet()) {
 			double flow = inLink.getValue().getNxl()[timeStep+1];
 			int tBefore = timeStep;
@@ -204,7 +476,7 @@ public class GenericNodeModel implements NodeModel{
 					break;
 				}
 			}
-			
+
 			RealVector tBeforeGrad = MatrixUtils.createRealVector(inLink.getValue().getdNxl()[timeStep+1]).mapMultiply(1/inLink.getValue().getNx0dt()[tBefore]);
 			double tBeforedt = inLink.getValue().getNxldt()[timeStep+1]*1/inLink.getValue().getNx0dt()[tBefore];
 			RealVector tAfterGrad = MatrixUtils.createRealVector(inLink.getValue().getdNxl()[timeStep+1]).mapMultiply(1/inLink.getValue().getNx0dt()[tAfter]);
@@ -213,12 +485,12 @@ public class GenericNodeModel implements NodeModel{
 			for(NetworkRoute r:inLink.getValue().getRoutes().getKeySet()) {
 				int rInd = i;
 				Id<Link>toLink = LTMUtils.findNextLink(r, inLink.getKey());
-				
+
 				double NxrlBefore = inLink.getValue().getNrx0()[rInd][tBefore];
 				RealVector dNxrlBefore = tBeforeGrad.ebeMultiply(inLink.getValue().getdNrx0()[rInd][tBefore]);
 				double NxrlBeforedt = inLink.getValue().getNrx0dt()[rInd][tBefore]*tBeforedt;
-				
-				
+
+
 				double NxrlAfter = inLink.getValue().getNrx0()[rInd][tAfter];
 				RealVector dNxrlAfter = tAfterGrad.ebeMultiply(inLink.getValue().getdNrx0()[rInd][tAfter]);
 				double NxrlAfterdt = inLink.getValue().getNrx0dt()[rInd][tAfter]*tAfterdt;
@@ -243,7 +515,7 @@ public class GenericNodeModel implements NodeModel{
 							new Tuple<>(new double[] {NxrlBeforedt},new double[] {NxrlAfterdt}),
 							flow,
 							inLink.getValue().getdNxl()[timeStep+1]);
-					
+
 					Nrxl = NxrlTuple.getFirst()-inLink.getValue().getNrxl()[rInd][timeStep];
 					dNrxl = NxrlTuple.getSecond();
 					Nrxldt = NxrldtTuple.getSecond()[0];
@@ -251,20 +523,20 @@ public class GenericNodeModel implements NodeModel{
 				inLink.getValue().getNrxl()[rInd][timeStep+1] = Nrxl;
 				inLink.getValue().getdNrxl()[rInd][timeStep+1] = dNrxl;
 				inLink.getValue().getNrxldt()[rInd][timeStep+1] = Nrxldt;
-				
+
 				//update the toLink's Nrx0
-				
+
 				int outRouteInd = this.outLinkModels.get(toLink).getRoutes().getIndex(r);
 				this.outLinkModels.get(toLink).getNrx0()[outRouteInd][timeStep+1] = Nrxl;
 				this.outLinkModels.get(toLink).getdNrx0()[outRouteInd][timeStep+1] = dNrxl;
 				this.outLinkModels.get(toLink).getNrx0dt()[outRouteInd][timeStep+1] = Nrxldt;
-				
-					
+
+
 			}
 		}
-		
-		
-		
+
+
+
 	}
 
 
@@ -414,7 +686,12 @@ public class GenericNodeModel implements NodeModel{
 			this.dR_j.get(outLink.getKey())[timeStep] = R.getThird()[timeStep];
 		}
 	}
-	
+	@Override
+	public void performLTMStep(int timeStep) {
+		this.generateIntendedTurnRatio(timeStep);
+		this.applyNodeModel(timeStep);
+		this.updateFlow(timeStep);
+	}
 	
 	
 }
