@@ -2,16 +2,20 @@ package utils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collector;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.math.linear.MatrixUtils;
 import org.apache.commons.math.linear.RealVector;
+import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.network.Node;
+import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.utils.collections.Tuple;
 
@@ -229,12 +233,77 @@ public class LTMUtils{
 		Double dt = (B.getFirst()*A.getSecond()-A.getFirst()*B.getSecond())/bsquare;
 		return new TuplesOfThree<>(abyb,dt,grad);
 	}
-	
+
 	public static TuplesOfThree<Double,Double,double[]> calcAtimesBGrad(TuplesOfThree<Double,Double,double[]> A, TuplesOfThree<Double,Double,double[]> B){
 		Double abyb = A.getFirst()*B.getFirst();
 		
 		double[] grad = MatrixUtils.createRealVector(A.getThird()).mapMultiply(B.getFirst()).add(MatrixUtils.createRealVector(B.getThird()).mapMultiply(A.getFirst())).getData();//(bda+adb)
 		Double dt = (B.getFirst()*A.getSecond()+A.getFirst()*B.getSecond());
 		return new TuplesOfThree<>(abyb,dt,grad);
+	}
+	
+	public static Link createDummyLink(Node fromNode,Node toNode,NetworkRoute r,boolean ifOriginElseDestination) {
+		String originDestinationIdentifier = "O";
+		if(!ifOriginElseDestination)originDestinationIdentifier = "D";
+		Link l = NetworkUtils.createLink(Id.createLinkId(r.getRouteDescription()+originDestinationIdentifier), 
+				fromNode, toNode, null, 10, 10000, 36000, 1);
+		return l;
+	}
+	public static Node createDummyNode(Node originalNode, boolean ifOriginElseDestination,NetworkRoute r) {
+		String originDestinationIdentifier = "O";
+		if(!ifOriginElseDestination)originDestinationIdentifier = "D";
+		Node n = NetworkUtils.createNode(Id.create(r.getRouteDescription()+originDestinationIdentifier,
+				Node.class), new Coord(originalNode.getCoord().getX()+Math.random()*100,
+						originalNode.getCoord().getY()+Math.random()*100));
+		return n;
+	}
+	/**
+	 * 
+	 * @param demand map of timebinKey - tuple<deamnd, demandGradient>
+	 * @param demandTimeBean - timeBeanKey -Tuple<start, end>
+	 * @param variables - variables with respect to which calculate gradient.
+	 * @param T - number of timeSteps in the LTM
+	 * @param LTMTimePoints 
+	 * @param maxflowRate 
+	 * @param ifUniformElseConstFlowRate
+	 * @return Nr Nrdt dNr
+	 */
+	public static TuplesOfThree<double[],double[],double[][]> setUpDemand(Map<String,Tuple<Double,double[]>>demand,Map<String,Tuple<Double,Double>> demandTimeBean,
+			MapToArray<VariableDetails>variables, int T,double[] LTMTimePoints, double maxflowRate, boolean ifUniformElseConstFlowRate) {
+		double[] Nr = new double[T];
+		double[] Nrdt = new double[T];
+		double[][] dNr = new double[T][variables.getKeySet().size()];
+		
+		
+		for(Entry<String, Tuple<Double, Double>> timeBean:demandTimeBean.entrySet()) {
+			Set<Integer> timeSteps = new HashSet<>();
+			for(int t=0;t<LTMTimePoints.length;t++) {
+				if(LTMTimePoints[t]<=timeBean.getValue().getSecond() && LTMTimePoints[t]>timeBean.getValue().getFirst()) {
+					timeSteps.add(t);
+				}
+				
+			}
+			if(ifUniformElseConstFlowRate) {
+				double demandTotal = demand.get(timeBean.getKey()).getFirst();
+				double[] demandTotalGrad = demand.get(timeBean.getKey()).getSecond();
+				double rate = demandTotal/(timeBean.getValue().getSecond()-timeBean.getValue().getFirst());
+				RealVector rateGrad = MatrixUtils.createRealVector(demandTotalGrad).mapDivide(timeBean.getValue().getSecond()-timeBean.getValue().getFirst());
+				for(int t:timeSteps) {
+					Nrdt[t] = rate; 
+					if(t==0) {
+						Nr[t] = rate*(LTMTimePoints[t]- LTMTimePoints[t-1]);
+						dNr[t] = rateGrad.mapMultiply(LTMTimePoints[t]- LTMTimePoints[t-1]).getData();							;
+					}else {
+						Nr[t] = Nr[t-1]+rate*(LTMTimePoints[t]- LTMTimePoints[t-1]);
+						dNr[t] = rateGrad.mapMultiply(LTMTimePoints[t]- LTMTimePoints[t-1]).add(dNr[t-1]).getData();							;
+					
+					}
+				}
+			}else {
+				throw new IllegalArgumentException("Constant demand loading is not yet implemented!!");
+			}
+		}
+		
+		return new TuplesOfThree<double[], double[], double[][]>(Nr, Nrdt, dNr);
 	}
 }

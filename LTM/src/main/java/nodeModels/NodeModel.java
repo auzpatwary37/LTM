@@ -2,6 +2,7 @@ package nodeModels;
 
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.network.Node;
 
 
 public interface NodeModel {
@@ -53,4 +54,8 @@ public interface NodeModel {
 	 * This function should set up the MapToArray for routes and T and variables inside the node and link models
 	 */
 	public void setTimeStepAndRoutes();
+	
+	public Node getNode();
+	public void addOriginNode(OriginNodeModel node);
+	public void addDestinationNode(DestinationNodeModel node);
 }

@@ -62,7 +62,9 @@ public class GenericNodeModel implements NodeModel{
 	private Map<Id<Link>,Map<Id<Link>,double[][]>>dG_ij = new HashMap<>();
 	
 	
+	private Map<NetworkRoute,OriginNodeModel> originNodeModels = new HashMap<>();
 	
+	private Map<NetworkRoute,DestinationNodeModel> destinationNodeModels = new HashMap<>();
 	
 	public GenericNodeModel(Node node, Map<Id<Link>,LinkModel>linkModels) {
 		
@@ -431,7 +433,6 @@ public class GenericNodeModel implements NodeModel{
 		Map<Id<Link>,Double> gjdt = new HashMap<>();
 		Map<Id<Link>,double[]> dgj = new HashMap<>();
 
-
 		this.inLinkModels.entrySet().forEach(inLink->{
 
 			for(Entry<Id<Link>, double[]> d:this.G_ij.get(inLink.getKey()).entrySet()){
@@ -469,7 +470,7 @@ public class GenericNodeModel implements NodeModel{
 			double flow = inLink.getValue().getNxl()[timeStep+1];
 			int tBefore = timeStep;
 			int tAfter = timeStep;
-			for(int j = timeStep-1;j>0;j--) {
+			for(int j = timeStep;j>=0;j--) {
 				if(flow<=inLink.getValue().getNx0()[j])tAfter = j;
 				if(flow>=inLink.getValue().getNx0()[j]) {
 					tBefore = j;
@@ -693,5 +694,19 @@ public class GenericNodeModel implements NodeModel{
 		this.updateFlow(timeStep);
 	}
 	
+	@Override
+	public Node getNode() {
+		return this.node;
+	}
+	@Override
+	public void addOriginNode(OriginNodeModel node) {
+		this.originNodeModels.put(node.getRoute(), node);
+		this.inLinkModels.put(node.getOutLinkModel().getLink().getId(), node.getOutLinkModel());
+	}
+	@Override
+	public void addDestinationNode(DestinationNodeModel node) {
+		this.destinationNodeModels.put(node.getRoute(), node);
+		this.outLinkModels.put(node.getInLinkModel().getLink().getId(), node.getInLinkModel());
+	}
 	
 }
