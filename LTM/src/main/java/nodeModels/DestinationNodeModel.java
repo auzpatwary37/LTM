@@ -43,6 +43,7 @@ public class DestinationNodeModel{
 		this.dummyNode = LTMUtils.createDummyNode(this.actualNode, false, r);
 		this.inLinkModel = new GenericLinkModel(LTMUtils.createDummyLink(dummyNode, actualNode, r, false));
 		this.inLinkModel.setLTMTimeBeanAndRouteSet(LTMTimePoints, new MapToArray<NetworkRoute>("OriginForRoute",List.of(r)));
+		if(variables!=null)this.inLinkModel.setOptimizationVariables(variables);
 		originalNodeModel.addDestinationNode(this);
 		this.T = T;
 		

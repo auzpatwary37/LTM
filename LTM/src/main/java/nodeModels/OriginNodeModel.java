@@ -41,7 +41,7 @@ public class OriginNodeModel{
 	private Map<String,Tuple<Double,double[]>>demand;
 	
 	public OriginNodeModel(NetworkRoute r,NodeModel originalNodeModel,Map<String,Tuple<Double,Double>> demandTimeBean, 
-			Map<String,Tuple<Double,double[]>>demand, int T, double[] LTMTimePoints, MapToArray<VariableDetails> variables) {
+			Map<String,Tuple<Double,double[]>>demand, double[] LTMTimePoints, MapToArray<VariableDetails> variables) {
 		this.demand =demand;
 		this.demandTimeBean = demandTimeBean;
 		this.actualNode = originalNodeModel.getNode();
@@ -50,8 +50,9 @@ public class OriginNodeModel{
 		this.dummyNode = LTMUtils.createDummyNode(this.actualNode, true, r);
 		this.outLinkModel = new GenericLinkModel(LTMUtils.createDummyLink(dummyNode, actualNode, r, true));
 		this.outLinkModel.setLTMTimeBeanAndRouteSet(LTMTimePoints, new MapToArray<NetworkRoute>("OriginForRoute",List.of(r)));
+		if(variables!=null)this.outLinkModel.setOptimizationVariables(variables);
 		originalNodeModel.addOriginNode(this);
-		this.T = T;
+		this.T = LTMTimePoints.length;
 		TuplesOfThree<double[],double[],double[][]> Nrr = LTMUtils.setUpDemand(demand, demandTimeBean, variables, T, LTMTimePoints, 1800, true);
 		this.Nr = Nrr.getFirst();
 		this.Nrdt = Nrr.getSecond();

@@ -229,16 +229,20 @@ public class LTMUtils{
 	public static TuplesOfThree<Double,Double,double[]> calcAbyBGrad(TuplesOfThree<Double,Double,double[]> A, TuplesOfThree<Double,Double,double[]> B){
 		Double abyb = A.getFirst()/B.getFirst();
 		double bsquare = Math.pow(B.getFirst(), 2);
-		double[] grad = MatrixUtils.createRealVector(A.getThird()).mapMultiply(B.getFirst()).subtract(MatrixUtils.createRealVector(B.getThird()).mapMultiply(A.getFirst())).mapDivide(bsquare).getData();//(bda-adb)/b^2
-		Double dt = (B.getFirst()*A.getSecond()-A.getFirst()*B.getSecond())/bsquare;
+		double[] grad = null;
+		if(A.getThird() != null && B.getThird() != null)MatrixUtils.createRealVector(A.getThird()).mapMultiply(B.getFirst()).subtract(MatrixUtils.createRealVector(B.getThird()).mapMultiply(A.getFirst())).mapDivide(bsquare).getData();//(bda-adb)/b^2
+		Double dt = null;
+		if(A.getSecond() != null && B.getSecond() != null) dt = (B.getFirst()*A.getSecond()-A.getFirst()*B.getSecond())/bsquare;
 		return new TuplesOfThree<>(abyb,dt,grad);
 	}
 
 	public static TuplesOfThree<Double,Double,double[]> calcAtimesBGrad(TuplesOfThree<Double,Double,double[]> A, TuplesOfThree<Double,Double,double[]> B){
 		Double abyb = A.getFirst()*B.getFirst();
 		
-		double[] grad = MatrixUtils.createRealVector(A.getThird()).mapMultiply(B.getFirst()).add(MatrixUtils.createRealVector(B.getThird()).mapMultiply(A.getFirst())).getData();//(bda+adb)
-		Double dt = (B.getFirst()*A.getSecond()+A.getFirst()*B.getSecond());
+		double[] grad = null;
+		if(A.getThird() != null && B.getThird() != null)grad = MatrixUtils.createRealVector(A.getThird()).mapMultiply(B.getFirst()).add(MatrixUtils.createRealVector(B.getThird()).mapMultiply(A.getFirst())).getData();//(bda+adb)
+		Double dt = null;
+		if(A.getSecond() != null && B.getSecond() != null)dt = (B.getFirst()*A.getSecond()+A.getFirst()*B.getSecond());
 		return new TuplesOfThree<>(abyb,dt,grad);
 	}
 	
@@ -272,7 +276,9 @@ public class LTMUtils{
 			MapToArray<VariableDetails>variables, int T,double[] LTMTimePoints, double maxflowRate, boolean ifUniformElseConstFlowRate) {
 		double[] Nr = new double[T];
 		double[] Nrdt = new double[T];
-		double[][] dNr = new double[T][variables.getKeySet().size()];
+		double[][] dNr = null;
+		
+		if(variables!=null)dNr = new double[T][variables.getKeySet().size()];
 		
 		
 		for(Entry<String, Tuple<Double, Double>> timeBean:demandTimeBean.entrySet()) {
@@ -287,15 +293,16 @@ public class LTMUtils{
 				double demandTotal = demand.get(timeBean.getKey()).getFirst();
 				double[] demandTotalGrad = demand.get(timeBean.getKey()).getSecond();
 				double rate = demandTotal/(timeBean.getValue().getSecond()-timeBean.getValue().getFirst());
-				RealVector rateGrad = MatrixUtils.createRealVector(demandTotalGrad).mapDivide(timeBean.getValue().getSecond()-timeBean.getValue().getFirst());
+				RealVector rateGrad = null;
+				if(demandTotalGrad!=null)rateGrad = MatrixUtils.createRealVector(demandTotalGrad).mapDivide(timeBean.getValue().getSecond()-timeBean.getValue().getFirst());
 				for(int t:timeSteps) {
 					Nrdt[t] = rate; 
 					if(t==0) {
 						Nr[t] = rate*(LTMTimePoints[t]- LTMTimePoints[t-1]);
-						dNr[t] = rateGrad.mapMultiply(LTMTimePoints[t]- LTMTimePoints[t-1]).getData();							;
+						if(dNr!=null && rateGrad!=null)dNr[t] = rateGrad.mapMultiply(LTMTimePoints[t]- LTMTimePoints[t-1]).getData();							;
 					}else {
 						Nr[t] = Nr[t-1]+rate*(LTMTimePoints[t]- LTMTimePoints[t-1]);
-						dNr[t] = rateGrad.mapMultiply(LTMTimePoints[t]- LTMTimePoints[t-1]).add(dNr[t-1]).getData();							;
+						if(dNr!=null && rateGrad!=null)dNr[t] = rateGrad.mapMultiply(LTMTimePoints[t]- LTMTimePoints[t-1]).add(dNr[t-1]).getData();							;
 					
 					}
 				}

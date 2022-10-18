@@ -3,6 +3,9 @@ package nodeModels;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Node;
+import org.matsim.core.population.routes.NetworkRoute;
+
+import utils.MapToArray;
 
 
 public interface NodeModel {
@@ -53,9 +56,21 @@ public interface NodeModel {
 	/**
 	 * This function should set up the MapToArray for routes and T and variables inside the node and link models
 	 */
-	public void setTimeStepAndRoutes();
+	public void setTimeStepAndRoutes(double[] timePoints, MapToArray<NetworkRoute> routes);
 	
 	public Node getNode();
+	
+	/**
+	 * Add an origin node to this node. 
+	 * This should put the link model inside as one of the incoming link
+	 * @param node
+	 */
 	public void addOriginNode(OriginNodeModel node);
+	/**
+	 * Add a destination node to this node model
+	 * This should put the link model inside as one of the outgoing link
+	 * @param node
+	 */
 	public void addDestinationNode(DestinationNodeModel node);
+	
 }
