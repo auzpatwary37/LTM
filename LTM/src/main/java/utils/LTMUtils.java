@@ -19,6 +19,9 @@ import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.utils.collections.Tuple;
 
+import linkModels.LinkModel;
+import ltmAlgorithm.DNL;
+
 /**
  * 
  * @author ashrafzaman
@@ -312,5 +315,181 @@ public class LTMUtils{
 		}
 		
 		return new TuplesOfThree<double[], double[], double[][]>(Nr, Nrdt, dNr);
+	}
+	
+	public static TuplesOfThree<Double,Double,double[]> getRouteTravelTime(NetworkRoute r, double[] timePoints, double departureTime, LinkModel boardingLinkModel, LinkModel alightingLinkModel){
+		
+		double travelTime = 0;
+		double travelTimedt = 0;
+		double[] dTravelTime = null;
+		int timeStepBefore = 0;
+		int timeStepAfter = 0;
+		for(int t=0;t<timePoints.length;t++) {
+			
+			if(timePoints[t]<=departureTime) {
+				timeStepBefore = t;
+			}else {
+				break;
+			}
+		}
+		for(int t=timePoints.length-1;t<0;t--) {
+				
+			if(timePoints[t]>=departureTime) {
+				timeStepAfter = t;
+			}else {
+				break;
+			}
+		}
+		//Assuming there is no gradient of departure time
+		int rInd = boardingLinkModel.getRoutes().getIndex(r);
+		double nrx0Before = boardingLinkModel.getNrx0()[rInd][timeStepBefore];
+		double nrx0Beforedt = boardingLinkModel.getNrx0dt()[rInd][timeStepBefore];
+		double[] dnrx0Before = boardingLinkModel.getdNrx0()[rInd][timeStepBefore];
+		
+		
+		double nrx0After = boardingLinkModel.getNrx0()[rInd][timeStepAfter];
+		double nrx0Afterdt = boardingLinkModel.getNrx0dt()[rInd][timeStepAfter];
+		double[] dnrx0After = boardingLinkModel.getdNrx0()[rInd][timeStepAfter];
+		
+		double nrx0 = 0;
+		double nrx0dt = 0;
+		RealVector dnrx0 = null;
+		
+		if(timeStepBefore!=timeStepAfter) {
+		
+			Tuple<Double,double[]> dnrx0Tuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>((double)timeStepBefore,(double)timeStepAfter),new Tuple<>(nrx0Before,nrx0After),new Tuple<>(new double[dnrx0Before.length],
+					new double[dnrx0After.length]), new Tuple<>(dnrx0Before,dnrx0After), departureTime, new double[dnrx0After.length]);
+			
+			Tuple<Double,double[]> nrx0dtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>((double)timeStepBefore,(double)timeStepAfter),new Tuple<>(nrx0Before,nrx0After),new Tuple<>(new double[] {0},
+					new double[] {0}) , new Tuple<>(new double[] {nrx0Beforedt},new double[] {nrx0Afterdt}), departureTime, new double[] {0});
+			
+			nrx0 = dnrx0Tuple.getFirst();
+			nrx0dt = nrx0dtTuple.getSecond()[0];
+			dnrx0 = MatrixUtils.createRealVector(dnrx0Tuple.getSecond());
+		}else {
+			nrx0 = nrx0Before;
+			nrx0dt = nrx0Beforedt;
+			dnrx0 = MatrixUtils.createRealVector(dnrx0Before);
+		}
+		//Find out the tBefore and tAfter for the arrival
+		int tBefore = timeStepBefore;
+		int tAfter = timeStepBefore;
+		rInd = alightingLinkModel.getRoutes().getIndex(r);
+		for(int j = timeStepBefore;j<timePoints.length;j++) {
+			if(nrx0>=alightingLinkModel.getNrxl()[rInd][j]) {
+				tBefore = j;
+				
+			}
+			if(nrx0<=alightingLinkModel.getNrxl()[rInd][j]) {
+				tAfter = j;
+				break;
+			}
+		}
+		double tBeforedt = 1/alightingLinkModel.getNrxldt()[rInd][tBefore]*nrx0dt;
+		RealVector dtBefore = dnrx0.mapMultiply(1/alightingLinkModel.getNrxldt()[rInd][tBefore]);
+		
+		double tAfterdt = 1/alightingLinkModel.getNrxldt()[rInd][tAfter]*nrx0dt;
+		RealVector dtAfter = dnrx0.mapMultiply(1/alightingLinkModel.getNrxldt()[rInd][tAfter]);
+		double t = 0;
+		double tdt = 0;
+		double[] dt = null;
+		if(tBefore!=tAfter) {
+		
+			Tuple<Double,double[]>dtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>(alightingLinkModel.getNrxl()[rInd][tBefore],alightingLinkModel.getNrxl()[rInd][tAfter]),
+					new Tuple<Double,Double>((double)tBefore,(double)tAfter), 
+					new Tuple<double[],double[]>(alightingLinkModel.getdNrxl()[rInd][tBefore],alightingLinkModel.getdNrxl()[rInd][tAfter]),
+					new Tuple<double[],double[]>(dtBefore.getData(),dtAfter.getData()), nrx0, dnrx0.getData());
+			
+			Tuple<Double,double[]>tdtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>(alightingLinkModel.getNrxl()[rInd][tBefore],alightingLinkModel.getNrxl()[rInd][tAfter]),
+					new Tuple<Double,Double>((double)tBefore,(double)tAfter), 
+					new Tuple<double[],double[]>(new double[] {alightingLinkModel.getNrxldt()[rInd][tBefore]},new double[] {alightingLinkModel.getNrxldt()[rInd][tAfter]}),
+					new Tuple<double[],double[]>(new double[] {tBeforedt},new double[] {tAfterdt}), nrx0, new double[] {nrx0dt});
+			
+			t = dtTuple.getFirst();
+			dt = dtTuple.getSecond();
+			tdt = tdtTuple.getSecond()[0];
+		}else {
+			t = tBefore;
+			dt = dtBefore.getData();
+			tdt = tBeforedt;
+		}
+		travelTime = t-departureTime;
+		travelTimedt = tdt;
+		dTravelTime = dt;
+		return new TuplesOfThree<>(travelTime,travelTimedt,dTravelTime);
+		
+	}
+	/**
+	 * Entry 
+	 * @return
+	 */
+	public static TuplesOfThree<Double,Double,double[]> getLinkVolume(LinkModel link,double fromTime,double toTime, double[] timePoints){
+		double volume = 0;
+		double volumedt = 0;
+		double[] dVolume = null;
+		int fromTimeBefore = 0;
+		int fromTimeAfter = 0;
+		int toTimeBefore = 0;
+		int toTimeAfter = 0;
+		
+		for(int i = 0;i<timePoints.length;i++) {
+			if(timePoints[i]<=fromTime) fromTimeBefore = i;
+			if(timePoints[i]>=fromTime) {
+				fromTimeAfter = i;
+				break;
+			}
+		}
+		for(int i = 0;i<timePoints.length;i++) {
+			if(timePoints[i]<=toTime) toTimeBefore = i;
+			if(timePoints[i]>=toTime) {
+				toTimeAfter = i;
+				break;
+			}
+		}
+		double fromNx0Before = link.getNx0()[fromTimeBefore];
+		double fromNx0dtBefore = link.getNx0dt()[fromTimeBefore];
+		double[] fromdNx0Before = link.getdNx0()[fromTimeBefore];
+		
+		double fromNx0After = link.getNx0()[fromTimeAfter];
+		double fromNx0dtAfter = link.getNx0dt()[fromTimeAfter];
+		double[] fromdNx0After = link.getdNx0()[fromTimeAfter];
+		
+		Tuple<Double,double[]> fromdNx0Tuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>(timePoints[fromTimeBefore],timePoints[fromTimeAfter]),
+				new Tuple<>(fromNx0Before,fromNx0After), new Tuple<>(new double[fromdNx0Before.length], new double[fromdNx0Before.length]),
+				new Tuple<>(fromdNx0Before,fromdNx0After), fromTime, new double[fromdNx0Before.length]);
+		
+		Tuple<Double,double[]> fromNx0dtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>(timePoints[fromTimeBefore],timePoints[fromTimeAfter]),
+				new Tuple<>(fromNx0Before,fromNx0After), new Tuple<>(new double[] {0}, new double[] {0}),
+				new Tuple<>(new double[] {fromNx0dtBefore},new double[] {fromNx0dtAfter}), fromTime, new double[] {0});
+		
+		double fromNx0 = fromdNx0Tuple.getFirst();
+		double fromNx0dt = fromNx0dtTuple.getSecond()[0];
+		double[] fromdNx0 = fromdNx0Tuple.getSecond();
+		
+		double toNx0Before = link.getNx0()[toTimeBefore];
+		double toNx0dtBefore = link.getNx0dt()[toTimeBefore];
+		double[] todNx0Before = link.getdNx0()[toTimeBefore];
+		
+		double toNx0After = link.getNx0()[toTimeAfter];
+		double toNx0dtAfter = link.getNx0dt()[toTimeAfter];
+		double[] todNx0After = link.getdNx0()[toTimeAfter];
+		
+		Tuple<Double,double[]> todNx0Tuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>(timePoints[toTimeBefore],timePoints[toTimeAfter]),
+				new Tuple<>(toNx0Before,toNx0After), new Tuple<>(new double[todNx0Before.length], new double[todNx0Before.length]),
+				new Tuple<>(todNx0Before,todNx0After), toTime, new double[todNx0Before.length]);
+		
+		Tuple<Double,double[]> toNx0dtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>(timePoints[toTimeBefore],timePoints[toTimeAfter]),
+				new Tuple<>(toNx0Before,toNx0After), new Tuple<>(new double[] {0}, new double[] {0}),
+				new Tuple<>(new double[] {toNx0dtBefore},new double[] {toNx0dtAfter}), toTime, new double[] {0});
+		
+		double toNx0 = todNx0Tuple.getFirst();
+		double toNx0dt = toNx0dtTuple.getSecond()[0];
+		double[] todNx0 = todNx0Tuple.getSecond();
+		
+		volume = toNx0-fromNx0;
+		volumedt = toNx0dt-fromNx0dt;
+		dVolume = MatrixUtils.createRealVector(todNx0).subtract(fromdNx0).getData();
+		
+		return new TuplesOfThree<>(volume,volumedt,dVolume);
 	}
 }

@@ -5,13 +5,16 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.*;
 import ust.hk.praisehk.metamodelcalibration.analyticalModel.*;
 import utils.LTMLoadableDemand;
+import utils.LTMLoadableDemandV2;
+import utils.MapToArray;
+import utils.VariableDetails;
 
 public interface DNL {
 
 	/**
 	 * This will perform the actual LTM procedure
 	 */
-	public void performLTM(LTMLoadableDemand demand);
+	public void performLTM(LTMLoadableDemandV2 demand, MapToArray<VariableDetails> v);
 	/**
 	 * 
 	 * @return the route travel time in LTM timeBean
@@ -46,7 +49,10 @@ public interface DNL {
 	 */
 	public Map<String,Map<Id<Link>,Double>> getLTMLinkTravelTime();
 	
-	
-	
+	/**
+	 * 
+	 * @return the time points of the LTM
+	 */
+	public double[] getTimePoints();
 	
 }

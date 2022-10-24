@@ -485,10 +485,20 @@ public class GenericNodeModel implements NodeModel{
 			RealVector tBeforeGrad = null;
 					
 			if(this.variables!=null)tBeforeGrad = MatrixUtils.createRealVector(inLink.getValue().getdNxl()[timeStep+1]).mapMultiply(1/inLink.getValue().getNx0dt()[tBefore]);
-			double tBeforedt = inLink.getValue().getNxldt()[timeStep+1]*1/inLink.getValue().getNx0dt()[tBefore];
+			double tBeforedt = 0;
+			if(inLink.getValue().getNx0dt()[tBefore] == 0) {
+				logger.debug("Flow rate is zero!!!");
+			}else {
+				tBeforedt = inLink.getValue().getNxldt()[timeStep+1]*1/inLink.getValue().getNx0dt()[tBefore];
+			}
 			RealVector tAfterGrad = null;
 			if(this.variables!=null)tAfterGrad = MatrixUtils.createRealVector(inLink.getValue().getdNxl()[timeStep+1]).mapMultiply(1/inLink.getValue().getNx0dt()[tAfter]);
-			double tAfterdt = inLink.getValue().getNxldt()[timeStep+1]*1/inLink.getValue().getNx0dt()[tAfter];
+			double tAfterdt= 0;
+			if(inLink.getValue().getNx0dt()[tBefore] == 0) {
+				logger.debug("Flow rate is zero!!!");
+			}else {
+			 tAfterdt = inLink.getValue().getNxldt()[timeStep+1]*1/inLink.getValue().getNx0dt()[tAfter];
+			}
 			int i = 0;
 			for(NetworkRoute r:inLink.getValue().getRoutes().getKeySet()) {
 				int rInd = i;

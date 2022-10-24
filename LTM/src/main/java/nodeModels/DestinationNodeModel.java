@@ -36,7 +36,7 @@ public class DestinationNodeModel{
 	private MapToArray<VariableDetails> variables;
 
 	
-	public DestinationNodeModel(NetworkRoute r,NodeModel originalNodeModel, int T, double[] LTMTimePoints, MapToArray<VariableDetails> variables) {
+	public DestinationNodeModel(NetworkRoute r,NodeModel originalNodeModel, double[] LTMTimePoints, MapToArray<VariableDetails> variables) {
 		this.actualNode = originalNodeModel.getNode();
 		this.variables =variables;
 		this.r = r;
@@ -45,7 +45,8 @@ public class DestinationNodeModel{
 		this.inLinkModel.setLTMTimeBeanAndRouteSet(LTMTimePoints, new MapToArray<NetworkRoute>("OriginForRoute",List.of(r)));
 		if(variables!=null)this.inLinkModel.setOptimizationVariables(variables);
 		originalNodeModel.addDestinationNode(this);
-		this.T = T;
+		this.T = LTMTimePoints.length;
+		this.LTMTimePoints = LTMTimePoints;
 		
 	}
 	
