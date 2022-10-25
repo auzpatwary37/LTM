@@ -37,8 +37,10 @@ public class OriginNodeModel{
 	private double[] Rjdt;
 	
 	private MapToArray<VariableDetails> variables;
-	private Map<String,Tuple<Double,Double>> demandTimeBean;
-	private Map<String,Tuple<Double,double[]>>demand;
+	private Map<String,Tuple<Double,Double>> demandTimeBean = null;
+	private Map<String,Tuple<Double,double[]>>demand = null;
+	private Map<Integer,Tuple<Double,double[]>>eDemand = null;
+	
 	
 	public OriginNodeModel(NetworkRoute r,NodeModel originalNodeModel,Map<String,Tuple<Double,Double>> demandTimeBean, 
 			Map<String,Tuple<Double,double[]>>demand, double[] LTMTimePoints, MapToArray<VariableDetails> variables) {
@@ -53,7 +55,32 @@ public class OriginNodeModel{
 		if(variables!=null)this.outLinkModel.setOptimizationVariables(variables);
 		originalNodeModel.addOriginNode(this);
 		this.T = LTMTimePoints.length;
-		TuplesOfThree<double[],double[],double[][]> Nrr = LTMUtils.setUpDemand(demand, demandTimeBean, variables, T, LTMTimePoints, 1800, true);
+		TuplesOfThree<double[],double[],double[][]> Nrr = LTMUtils.setUpDemand(demand, demandTimeBean, variables, LTMTimePoints, 1800, true);
+		this.Nr = Nrr.getFirst();
+		this.Nrdt = Nrr.getSecond();
+		this.dNr = Nrr.getThird();
+	}
+	/**
+	 * For Event based demand 
+	 * @param r
+	 * @param originalNodeModel
+	 * @param demand
+	 * @param LTMTimePoints
+	 * @param variables
+	 */
+	public OriginNodeModel(NetworkRoute r,NodeModel originalNodeModel,
+			Map<Integer,Tuple<Double,double[]>>demand, double[] LTMTimePoints, MapToArray<VariableDetails> variables) {
+		this.eDemand =demand;
+		this.actualNode = originalNodeModel.getNode();
+		this.variables =variables;
+		this.r = r;
+		this.dummyNode = LTMUtils.createDummyNode(this.actualNode, true, r);
+		this.outLinkModel = new GenericLinkModel(LTMUtils.createDummyLink(dummyNode, actualNode, r, true));
+		this.outLinkModel.setLTMTimeBeanAndRouteSet(LTMTimePoints, new MapToArray<NetworkRoute>("OriginForRoute",List.of(r)));
+		if(variables!=null)this.outLinkModel.setOptimizationVariables(variables);
+		originalNodeModel.addOriginNode(this);
+		this.T = LTMTimePoints.length;
+		TuplesOfThree<double[],double[],double[][]> Nrr = LTMUtils.setUpDemand(eDemand,  variables, LTMTimePoints);
 		this.Nr = Nrr.getFirst();
 		this.Nrdt = Nrr.getSecond();
 		this.dNr = Nrr.getThird();

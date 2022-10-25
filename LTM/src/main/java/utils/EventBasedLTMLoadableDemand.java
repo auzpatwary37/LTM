@@ -10,27 +10,27 @@ import org.matsim.api.core.v01.network.Link;
 import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.utils.collections.Tuple;
 
-/**
- * This will be the liason class between the demand input and corresponding route travel time output
- * 
- * @author ashrafzaman
- *
- */
-public class LTMLoadableDemandV2 {
+public class EventBasedLTMLoadableDemand {
+	
 	private Map<String,NetworkRoute> routes = new HashMap<>();
 	private Map<String,NetworkRoute> trvRoutes = new HashMap<>();
-	private Map<NetworkRoute, Map<String,Tuple<Double,double[]>>> demand;
-	private Map<NetworkRoute, Map<String,Tuple<Double,double[]>>> trvDemand;
-	private Map<String,Tuple<Double,Double>> demandTimeBean;
-	private Map<NetworkRoute,Map<String,Set<Tuple<Id<Link>,Id<Link>>>>> transitTravelTimeQuery;
-	
+	private Map<NetworkRoute, Map<Integer,Tuple<Double,double[]>>> demand;
+	private Map<NetworkRoute, Map<Integer,Tuple<Double,double[]>>> trvDemand;
 	private Map<Id<Link>,Set<NetworkRoute>> linkToRouteIncidence = new HashMap<>();
 	private Map<Id<Link>,Set<NetworkRoute>> linkToTrvRouteIncidence = new HashMap<>();
-	
-	public LTMLoadableDemandV2(Map<NetworkRoute, Map<String,Tuple<Double,double[]>>> demand, Map<NetworkRoute, Map<String,Tuple<Double,double[]>>> trvDemand, Map<String, Tuple<Double,Double>> timeBean, Map<NetworkRoute,Map<String,Set<Tuple<Id<Link>,Id<Link>>>>> transitSubRouteQuery) {
+	private Map<NetworkRoute,Map<Integer,Set<Tuple<Id<Link>,Id<Link>>>>> transitTravelTimeQuery;
+	//
+	/**
+	 * This one is for event based demand input
+	 * Not yet implemented!!!
+	 * @param demand for each route->timeStamp->demand-demandGradient pair, here the demand can be summation of probabilities,
+	 *  hence the gradient will be summation of probability gradients
+	 * @param trvDemand for each transit route route->timeStamp->demand-demandGradient pair, here the demand can be summation of probabilities,
+	 *  hence the gradient will be summation of probability gradients
+	 */
+	public EventBasedLTMLoadableDemand(Map<NetworkRoute, Map<Integer,Tuple<Double,double[]>>> demand, Map<NetworkRoute, Map<Integer,Tuple<Double,double[]>>> trvDemand, Map<NetworkRoute,Map<Integer,Set<Tuple<Id<Link>,Id<Link>>>>> transitSubRouteQuery) {
 		this.demand = demand;
 		this.trvDemand = trvDemand;
-		this.demandTimeBean = timeBean;
 		this.transitTravelTimeQuery = transitSubRouteQuery;
 		demand.keySet().stream().forEach(a->routes.put(a.getRouteDescription(), a));
 		trvDemand.keySet().stream().forEach(a->trvRoutes.put(a.getRouteDescription(),a));	
@@ -56,11 +56,6 @@ public class LTMLoadableDemandV2 {
 			});
 		});
 	}
-	
-	public Map<NetworkRoute, Map<String,Set<Tuple<Id<Link>, Id<Link>>>>> getTransitTravelTimeQuery() {
-		return transitTravelTimeQuery;
-	}
-	
 	public Map<String, NetworkRoute> getRoutes() {
 		return routes;
 	}
@@ -69,18 +64,19 @@ public class LTMLoadableDemandV2 {
 		return trvRoutes;
 	}
 
-	public Map<NetworkRoute, Map<String, Tuple<Double, double[]>>> getDemand() {
+	public Map<NetworkRoute, Map<Integer, Tuple<Double, double[]>>> getDemand() {
 		return demand;
 	}
 
-	public Map<NetworkRoute, Map<String, Tuple<Double, double[]>>> getTrvDemand() {
+	public Map<NetworkRoute, Map<Integer, Tuple<Double, double[]>>> getTrvDemand() {
 		return trvDemand;
 	}
 
-	public Map<String, Tuple<Double, Double>> getDemandTimeBean() {
-		return demandTimeBean;
+	
+	
+	public Map<NetworkRoute, Map<Integer,Set<Tuple<Id<Link>, Id<Link>>>>> getTransitTravelTimeQuery() {
+		return transitTravelTimeQuery;
 	}
-
 	public Map<Id<Link>, Set<NetworkRoute>> getLinkToRouteIncidence() {
 		return linkToRouteIncidence;
 	}
@@ -88,5 +84,4 @@ public class LTMLoadableDemandV2 {
 	public Map<Id<Link>, Set<NetworkRoute>> getLinkToTrvRouteIncidence() {
 		return linkToTrvRouteIncidence;
 	}
-	
 }

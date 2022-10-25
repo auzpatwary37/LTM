@@ -276,12 +276,12 @@ public class LTMUtils{
 	 * @return Nr Nrdt dNr
 	 */
 	public static TuplesOfThree<double[],double[],double[][]> setUpDemand(Map<String,Tuple<Double,double[]>>demand,Map<String,Tuple<Double,Double>> demandTimeBean,
-			MapToArray<VariableDetails>variables, int T,double[] LTMTimePoints, double maxflowRate, boolean ifUniformElseConstFlowRate) {
-		double[] Nr = new double[T];
-		double[] Nrdt = new double[T];
+			MapToArray<VariableDetails>variables,double[] LTMTimePoints, double maxflowRate, boolean ifUniformElseConstFlowRate) {
+		double[] Nr = new double[LTMTimePoints.length];
+		double[] Nrdt = new double[LTMTimePoints.length];
 		double[][] dNr = null;
 		
-		if(variables!=null)dNr = new double[T][variables.getKeySet().size()];
+		if(variables!=null)dNr = new double[LTMTimePoints.length][variables.getKeySet().size()];
 		
 		
 		for(Entry<String, Tuple<Double, Double>> timeBean:demandTimeBean.entrySet()) {
@@ -312,6 +312,54 @@ public class LTMUtils{
 			}else {
 				throw new IllegalArgumentException("Constant demand loading is not yet implemented!!");
 			}
+		}
+		
+		return new TuplesOfThree<double[], double[], double[][]>(Nr, Nrdt, dNr);
+	}
+	
+	
+	/**
+	 * 
+	 * @param demand map of timeStamp- tuple<deamnd, demandGradient>
+	 * @param demandTimeBean - timeBeanKey -Tuple<start, end>
+	 * @param variables - variables with respect to which calculate gradient.
+	 * @param T - number of timeSteps in the LTM
+	 * @param LTMTimePoints 
+	 * @param maxflowRate 
+	 * @param ifUniformElseConstFlowRate
+	 * @return Nr Nrdt dNr
+	 */
+	public static TuplesOfThree<double[],double[],double[][]> setUpDemand(Map<Integer,Tuple<Double,double[]>>demand,
+			MapToArray<VariableDetails>variables,double[] LTMTimePoints) {
+		double[] Nr = new double[LTMTimePoints.length];
+		double[] Nrdt = new double[LTMTimePoints.length];
+		double[][] dNr = null;
+		
+		if(variables!=null)dNr = new double[LTMTimePoints.length][variables.getKeySet().size()];
+		
+		for(int t=1;t<LTMTimePoints.length;t++) {
+			Set<Integer> timeStamps = new HashSet<>();
+			
+			for(Entry<Integer, Tuple<Double, double[]>> tdemand:demand.entrySet()) {
+			
+				int time = tdemand.getKey();
+				if(time==0)time=1;
+				if(time<=LTMTimePoints[t] && time>LTMTimePoints[t-1]) {
+					timeStamps.add(time);
+				}
+				
+			}
+			double d = 0;
+			double ddt = 0;
+			RealVector dGrad = MatrixUtils.createRealVector(new double[variables.getKeySet().size()]);
+			for(int time:timeStamps) {
+				d += demand.get(time).getFirst();
+				dGrad = dGrad.add(demand.get(time).getSecond());
+			}
+			ddt = d/LTMTimePoints[t]-LTMTimePoints[t-1];
+			Nr[t] = d;
+			Nrdt[t] = ddt;
+			dNr[t] = dGrad.getData();
 		}
 		
 		return new TuplesOfThree<double[], double[], double[][]>(Nr, Nrdt, dNr);

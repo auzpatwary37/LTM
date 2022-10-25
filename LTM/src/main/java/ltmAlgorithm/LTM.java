@@ -4,6 +4,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+
+import org.apache.commons.math.linear.MatrixUtils;
+import org.apache.commons.math.linear.RealVector;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -16,13 +21,16 @@ import nodeModels.DestinationNodeModel;
 import nodeModels.GenericNodeModel;
 import nodeModels.NodeModel;
 import nodeModels.OriginNodeModel;
-import ust.hk.praisehk.metamodelcalibration.analyticalModel.AnalyticalModelRoute;
+import utils.EventBasedLTMLoadableDemand;
 import utils.LTMLoadableDemandV2;
+import utils.LTMUtils;
 import utils.MapToArray;
+import utils.TuplesOfThree;
 import utils.VariableDetails;
 
 public class LTM implements DNL{
-	private LTMLoadableDemandV2 demand;
+	private LTMLoadableDemandV2 demand ;
+	private EventBasedLTMLoadableDemand eDemand;
 	private MapToArray<VariableDetails> variables = null;
 	private final Network network;
 	private Map<Id<Link>,LinkModel> linkModels = new HashMap<>();
@@ -59,7 +67,7 @@ public class LTM implements DNL{
 	@Override
 	public void performLTM(LTMLoadableDemandV2 demand, MapToArray<VariableDetails> variables) {
 		this.demand = demand;
-		
+		this.variables = variables;
 		Map<Id<Link>,List<NetworkRoute>> totalInc = new HashMap<>();
 		demand.getLinkToRouteIncidence().entrySet().forEach(e->{
 			totalInc.put(e.getKey(), new ArrayList<>(e.getValue()));
@@ -93,13 +101,101 @@ public class LTM implements DNL{
 					, new DestinationNodeModel(e.getKey(), this.nodeModels.get(network.getLinks().get(e.getKey().getEndLinkId()).getToNode().getId()), timePoints, variables)));
 			
 		});
+		this.runLTMSimulation();
+	}
+	
+	@Override
+	public void performLTM(EventBasedLTMLoadableDemand demand, MapToArray<VariableDetails> variables) {
+		this.eDemand = demand;
+		this.variables = variables;
+		Map<Id<Link>,List<NetworkRoute>> totalInc = new HashMap<>();
+		demand.getLinkToRouteIncidence().entrySet().forEach(e->{
+			totalInc.put(e.getKey(), new ArrayList<>(e.getValue()));
+		});
+		eDemand.getLinkToTrvRouteIncidence().entrySet().forEach(e->totalInc.compute(e.getKey(), 
+				(k,v)->{
+					if(v==null)return v;
+					else {
+						v.addAll(e.getValue());
+						return v;
+					}
+				}));
+		totalInc.entrySet().forEach(e->{
+			List<NetworkRoute> routes = new ArrayList<>();
+			routes.addAll(e.getValue());
+			this.linkModels.get(e.getKey()).setLTMTimeBeanAndRouteSet(timePoints, new MapToArray<NetworkRoute>("routes for link "+e.getKey(),e.getValue()));
+			if(variables!=null)this.linkModels.get(e.getKey()).setOptimizationVariables(variables);
+		});
 		
+		eDemand.getDemand().entrySet().forEach(e->{
+			this.routeODModels.put(e.getKey(), new Tuple<OriginNodeModel,DestinationNodeModel>(new OriginNodeModel(e.getKey(),
+					this.nodeModels.get(network.getLinks().get(e.getKey().getStartLinkId()).getFromNode().getId()),e.getValue(),this.timePoints,variables)
+					, new DestinationNodeModel(e.getKey(), this.nodeModels.get(network.getLinks().get(e.getKey().getEndLinkId()).getToNode().getId()), timePoints, variables)));
+		
+			
+		});
+		
+		eDemand.getTrvDemand().entrySet().forEach(e->{
+			this.trvRouteODModels.put(e.getKey(), new Tuple<OriginNodeModel,DestinationNodeModel>(new OriginNodeModel(e.getKey(),
+					this.nodeModels.get(network.getLinks().get(e.getKey().getStartLinkId()).getFromNode().getId()),e.getValue(),this.timePoints,variables)
+					, new DestinationNodeModel(e.getKey(), this.nodeModels.get(network.getLinks().get(e.getKey().getEndLinkId()).getToNode().getId()), timePoints, variables)));
+			
+		});
+		this.runLTMSimulation();
+		
+	}
+	private void runLTMSimulation() {
+		for(int i = 0; i<this.timePoints.length;i++) {
+			int timeStep = i;
+			this.nodeModels.entrySet().parallelStream().forEach(e->{
+				e.getValue().performLTMStep(timeStep);
+			});
+		}
 	}
 
 	@Override
-	public Map<String, Map<Id<AnalyticalModelRoute>, Double>> getRouteTravelTime() {
-		// TODO Auto-generated method stub
-		return null;
+	public Map<NetworkRoute, Map<String, Tuple<Double, double[]>>> getTimeBeanRouteTravelTime(int numberOfPointsToAverage) {
+		if(this.demand==null)throw new IllegalArgumentException("TimeBean specific demand is null!!!");
+		if(numberOfPointsToAverage<1 ||numberOfPointsToAverage>3) {
+			System.out.println("Number of points to average can not be less than 1 or greater than 3");
+			numberOfPointsToAverage = 3;
+		}
+		Map<NetworkRoute,Map<String,Tuple<Double,double[]>>> tt = new HashMap<>();
+		int n = numberOfPointsToAverage;
+		this.demand.getDemand().entrySet().parallelStream().forEach(d->{
+			tt.put(d.getKey(), new HashMap<>());
+			for(Entry<String, Tuple<Double, double[]>> timeD:d.getValue().entrySet()) {
+				
+				double[] departureTime = new double[n];
+				double travelTime = 0;
+				RealVector travelTimeGrad = MatrixUtils.createRealVector(new double[this.variables.getKeySet().size()]);
+				for(int i = 0;i<n;i++) {
+					departureTime[i] = this.demand.getDemandTimeBean().get(timeD.getKey()).getFirst()+
+							(this.demand.getDemandTimeBean().get(timeD.getKey()).getSecond()-
+									this.demand.getDemandTimeBean().get(timeD.getKey()).getFirst())/n*i;
+					TuplesOfThree<Double,Double,double[]> out = LTMUtils.getRouteTravelTime(d.getKey(), timePoints, departureTime[i],
+							this.routeODModels.get(d.getKey()).getFirst().getOutLinkModel(), this.routeODModels.get(d.getKey()).getSecond().getInLinkModel());
+					travelTime += 1./n*out.getFirst();
+					travelTimeGrad = travelTimeGrad.add(out.getThird()).mapMultiply(1./n);
+				}
+				tt.get(d.getKey()).put(timeD.getKey(), new Tuple<>(travelTime,travelTimeGrad.getData()));
+			}
+		});
+		return tt;
+	}
+	@Override
+	public Map<NetworkRoute, Map<Integer, Tuple<Double, double[]>>> getTimeStampedRouteTravelTime() {
+		if(eDemand==null)throw new IllegalArgumentException("Event based demand is null!!!");
+		Map<NetworkRoute, Map<Integer, Tuple<Double, double[]>>> tt = new HashMap<>();
+		this.eDemand.getDemand().entrySet().parallelStream().forEach(d->{
+			tt.put(d.getKey(), new HashMap<>());
+			for(Entry<Integer, Tuple<Double, double[]>> timeD:d.getValue().entrySet()) {
+				TuplesOfThree<Double,Double,double[]> result = LTMUtils.getRouteTravelTime(d.getKey(), timePoints, timeD.getKey(), 
+						this.routeODModels.get(d.getKey()).getFirst().getOutLinkModel(), this.routeODModels.get(d.getKey()).getSecond().getInLinkModel());
+				tt.get(d.getKey()).put(timeD.getKey(), new Tuple<>(result.getFirst(),result.getThird()));
+			}
+		});
+		return tt;
 	}
 	
 	public double[] getTimePoints() {
@@ -108,34 +204,76 @@ public class LTM implements DNL{
 
 
 
-	@Override
-	public Map<String, Map<Id<AnalyticalModelRoute>, Double>> getTrvRouteTravelTime() {
-		// TODO Auto-generated method stub
-		return null;
-	}
+	
 
 	@Override
-	public Map<String, Map<Id<Link>, Double>> getLTMLinkFlow() {
-		// TODO Auto-generated method stub
-		return null;
+	public Map<String, Map<Id<Link>, Tuple<Double,double[]>>> getLTMLinkFlow(Map<String,Tuple<Double,Double>> timeBean) {
+		Map<String,Map<Id<Link>,Tuple<Double,double[]>>> linkFlow = new HashMap<>();
+		timeBean.entrySet().forEach(t->{
+			linkFlow.put(t.getKey(), new HashMap<>());
+			this.linkModels.entrySet().parallelStream().forEach(l->{
+				TuplesOfThree<Double,Double,double[]> out = LTMUtils.getLinkVolume(l.getValue(), t.getValue().getFirst(), t.getValue().getSecond(), timePoints);
+				linkFlow.get(t.getKey()).put(l.getKey(), new Tuple<>(out.getFirst(),out.getThird()));
+			});
+		});
+		return linkFlow;
 	}
 
-	@Override
-	public Map<String, Map<Id<Link>, Double>> getLTMTrvLinkFlow() {
-		// TODO Auto-generated method stub
-		return null;
-	}
+	
+
+
 
 	@Override
-	public Map<String, Map<Id<Link>, Double>> getLTMCombinedLinkFlow() {
-		// TODO Auto-generated method stub
-		return null;
+	public Map<NetworkRoute, Map<String, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>>>> getTimeBeanTransitTravelTime(int numberOfPointsToAverage) {
+		if(this.demand==null)throw new IllegalArgumentException("TimeBean specific demand is null!!!");
+		if(numberOfPointsToAverage<1 ||numberOfPointsToAverage>3) {
+			System.out.println("Number of points to average can not be less than 1 or greater than 3");
+			numberOfPointsToAverage = 3;
+		}
+		int n = numberOfPointsToAverage;
+		Map<NetworkRoute, Map<String, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>>>> result = new HashMap<>();
+		this.demand.getTransitTravelTimeQuery().entrySet().parallelStream().forEach(d->{
+			result.put(d.getKey(), new HashMap<>());
+			for(Entry<String, Set<Tuple<Id<Link>, Id<Link>>>> timeD:d.getValue().entrySet()) {
+				result.get(d.getKey()).put(timeD.getKey(), new HashMap<>());
+				for(Tuple<Id<Link>,Id<Link>> lPair:timeD.getValue()) {
+					double[] departureTime = new double[n];
+					double travelTime = 0;
+					RealVector travelTimeGrad = MatrixUtils.createRealVector(new double[this.variables.getKeySet().size()]);
+					for(int i = 0;i<n;i++) {
+						departureTime[i] = this.demand.getDemandTimeBean().get(timeD.getKey()).getFirst()+
+								(this.demand.getDemandTimeBean().get(timeD.getKey()).getSecond()-
+										this.demand.getDemandTimeBean().get(timeD.getKey()).getFirst())/n*i;
+						TuplesOfThree<Double,Double,double[]> out = LTMUtils.getRouteTravelTime(d.getKey(), timePoints, departureTime[i],
+								this.linkModels.get(lPair.getFirst()), this.linkModels.get(lPair.getSecond()));
+						travelTime+=1./n*out.getFirst();
+						travelTimeGrad = travelTimeGrad.add(out.getThird()).mapMultiply(1./n);
+					}
+					result.get(d.getKey()).get(timeD.getKey()).put(lPair, new Tuple<>(travelTime,travelTimeGrad.getData()));
+				}
+			}
+		});
+		return result;
 	}
 
+
+
 	@Override
-	public Map<String, Map<Id<Link>, Double>> getLTMLinkTravelTime() {
-		// TODO Auto-generated method stub
-		return null;
+	public Map<NetworkRoute, Map<Integer, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>>>> getTimeStampedTransitTravelTime() {
+		if(eDemand==null)throw new IllegalArgumentException("Event based demand is null!!!");
+		Map<NetworkRoute, Map<Integer, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>>>> result = new HashMap<>();
+		this.eDemand.getTransitTravelTimeQuery().entrySet().parallelStream().forEach(d->{
+			result.put(d.getKey(), new HashMap<>());
+			for(Entry<Integer, Set<Tuple<Id<Link>, Id<Link>>>> timeD:d.getValue().entrySet()) {
+				result.get(d.getKey()).put(timeD.getKey(), new HashMap<>());
+				for(Tuple<Id<Link>, Id<Link>> linkPair:timeD.getValue()) {
+					TuplesOfThree<Double,Double,double[]> out = LTMUtils.getRouteTravelTime(d.getKey(), timePoints, timeD.getKey(),
+							this.linkModels.get(linkPair.getFirst()), this.linkModels.get(linkPair.getSecond()));
+					result.get(d.getKey()).get(timeD.getKey()).put(linkPair, new Tuple<>(out.getFirst(),out.getThird()));
+				}
+			}
+		});
+		return result;
 	}
 
 }
