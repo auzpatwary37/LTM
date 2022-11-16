@@ -50,6 +50,7 @@ public class GenericLinkModel implements LinkModel{
 	private double delT;//length of each time slots
 	private MapToArray<VariableDetails> variables;//Map to array converter for variables to calculate gradient with respect to, this can be shared all over
 	
+	
 //	private double[][][] dNrx0;
 //	private double[][][] dNrxl;
 //	private double[][] dNx0;
@@ -308,6 +309,10 @@ public class GenericLinkModel implements LinkModel{
 	@Override
 	public int getTimeindexNo() {
 		return T;
+	}
+	@Override
+	public MapToArray<VariableDetails> getVariables() {
+		return variables;
 	}
 
 //	@Override

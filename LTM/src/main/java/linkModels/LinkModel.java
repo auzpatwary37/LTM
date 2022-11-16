@@ -121,17 +121,19 @@ public interface LinkModel {
 	 */
 	public void setOptimizationVariables(MapToArray<VariableDetails> variables);
 
-	double[][][] getdNrx0();
+	public double[][][] getdNrx0();
 
-	double[][] getNrxldt();
+	public double[][] getNrxldt();
 
-	double[][][] getdNrxl();
+	public double[][][] getdNrxl();
 
-	double[] getNx0dt();
-	double[][] getdNx0();
-	double[][] getdNxl();
+	public double[] getNx0dt();
+	public double[][] getdNx0();
+	public double[][] getdNxl();
 	
-	double[] getNxldt();
+	public double[] getNxldt();
 
-	double[][] getNrx0dt();
+	public double[][] getNrx0dt();
+	
+	public MapToArray<VariableDetails> getVariables();
 }

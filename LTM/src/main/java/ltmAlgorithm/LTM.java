@@ -234,9 +234,9 @@ public class LTM implements DNL{
 		Map<NetworkRoute, Map<String, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>>>> result = new HashMap<>();
 		this.demand.getTransitTravelTimeQuery().entrySet().parallelStream().forEach(d->{
 			result.put(d.getKey(), new HashMap<>());
-			for(Entry<String, Set<Tuple<Id<Link>, Id<Link>>>> timeD:d.getValue().entrySet()) {
+			for(Entry<String, Map<Tuple<Id<Link>, Id<Link>>, Double>> timeD:d.getValue().entrySet()) {
 				result.get(d.getKey()).put(timeD.getKey(), new HashMap<>());
-				for(Tuple<Id<Link>,Id<Link>> lPair:timeD.getValue()) {
+				for(Tuple<Id<Link>,Id<Link>> lPair:timeD.getValue().keySet()) {
 					double[] departureTime = new double[n];
 					double travelTime = 0;
 					RealVector travelTimeGrad = MatrixUtils.createRealVector(new double[this.variables.getKeySet().size()]);
@@ -274,6 +274,38 @@ public class LTM implements DNL{
 			}
 		});
 		return result;
+	}
+	
+	public void simulateTransit() {
+		
+		Map<Id<Link>,double[][][]> Nrpbax0 = new HashMap<>();
+		Map<Id<Link>,double[][][]> Nrpbaxl = new HashMap<>();
+		
+		Map<Id<Link>,double[][]> Nrpx0 = new HashMap<>();
+		Map<Id<Link>,double[][]> Nrpxl = new HashMap<>();
+		
+		Map<Id<Link>,Map<NetworkRoute,Map<Tuple<Id<Link>,Id<Link>>,double[]>>> linkPassengerDemand = new HashMap<>();
+		
+		if(this.demand!=null) {
+			for(int t = 1;t<this.timeStepSize;t++) {
+				for(Entry<String, Tuple<Double, Double>> timeBean:this.demand.getDemandTimeBean().entrySet()) {//loop through each time step
+					if(this.timePoints[t]>=timeBean.getValue().getFirst() && this.timePoints[t]<timeBean.getValue().getSecond()) {
+						this.demand.getTransitTravelTimeQuery().entrySet().forEach(r->{
+							
+						});
+					}
+				}
+			}
+		}else if(this.eDemand!=null) {
+			
+		}else {
+			throw new IllegalArgumentException("Both demand and event based demands are null.");
+		}
+		
+		for(int t = 0; t<timePoints.length;t++) {//loop through each time step
+			
+		}
+		
 	}
 
 }

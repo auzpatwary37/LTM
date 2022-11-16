@@ -55,7 +55,6 @@ public class LTMUtils{
 		double[] pCap = new double[weights.length];
 		List<RealVector> pGrads =null;
 		List<double[]>pCapGrad = null;
-		
 		double sum = 0;
 		RealVector sumGradient = null;
 		if(weightGradients !=null &&  !weightGradients.isEmpty()) {
@@ -132,14 +131,13 @@ public class LTMUtils{
 				pGrads.add(pGrad);
 			}
 		}
-		
+		 
 		return new Tuple<>(p,pGrads.stream().map(r->r.getData()).collect(Collectors.toList()));
 	}
 	
 	public static <T> Map<T,Tuple<Double,double[]>> calculateRatioAndGradient(Map<T,Double> weights, Map<T,double[]> weightGradients){
 		Map<T,Double> p = new HashMap<>();
 		Map<T,RealVector> pGrads =new HashMap<>();
-		
 		double sum = 0;
 		RealVector sumGradient = null;
 //		if(weightGradients !=null &&  !weightGradients.isEmpty()) {
@@ -365,6 +363,7 @@ public class LTMUtils{
 		return new TuplesOfThree<double[], double[], double[][]>(Nr, Nrdt, dNr);
 	}
 	
+	
 	public static TuplesOfThree<Double,Double,double[]> getRouteTravelTime(NetworkRoute r, double[] timePoints, double departureTime, LinkModel boardingLinkModel, LinkModel alightingLinkModel){
 		
 		double travelTime = 0;
@@ -540,4 +539,43 @@ public class LTMUtils{
 		
 		return new TuplesOfThree<>(volume,volumedt,dVolume);
 	}
+	
+	public static TuplesOfThree<double[],double[],double[][]> getLinkTravelTime(LinkModel link, double[] timePoints){
+		double[] volume = new double[timePoints.length];
+		double[] volumedt = new double[timePoints.length];
+		double[][] dVolume = new double[timePoints.length][link.getVariables().getKeySet().size()];
+		
+		
+		
+		return new TuplesOfThree<>(volume,volumedt,dVolume);
+	}
+	
+	/**
+	 * Entry 
+	 * @return
+	 */
+	public static TuplesOfThree<double[],double[],double[][]> getRouteSpecificCumulativeLinkVolume(NetworkRoute r, LinkModel link, double[] timePoints){
+		
+		double[] volume = new double[timePoints.length];
+		double[] volumedt = new double[timePoints.length];
+		double[][] dVolume = new double[timePoints.length][link.getVariables().getKeySet().size()];
+		
+		int routeIdx = link.getRoutes().getIndex(r);
+		
+		for(int i = 0;i<timePoints.length;i++) {
+			if(i>0) {
+				volume[i] = volume[i-1] + link.getNrxl()[routeIdx][i]-link.getNrx0()[routeIdx][i];
+				volumedt[i] = volumedt[i-1] + link.getNrxldt()[routeIdx][i]-link.getNrx0dt()[routeIdx][i];
+				dVolume[i] = MatrixUtils.createRealVector(link.getdNrxl()[routeIdx][i]).subtract(link.getdNrx0()[routeIdx][i]).add(dVolume[i-1]).getData();
+			}else {
+				volume[i] = link.getNrxl()[routeIdx][i]-link.getNrx0()[routeIdx][i];
+				volumedt[i] = link.getNrxldt()[routeIdx][i]-link.getNrx0dt()[routeIdx][i];
+				dVolume[i] = MatrixUtils.createRealVector(link.getdNrxl()[routeIdx][i]).subtract(link.getdNrx0()[routeIdx][i]).getData();
+			}
+		}
+		
+		return new TuplesOfThree<>(volume,volumedt,dVolume);
+	}
+	
+	
 }
