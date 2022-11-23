@@ -18,7 +18,7 @@ public class EventBasedLTMLoadableDemand {
 	private Map<NetworkRoute, Map<Integer,Tuple<Double,double[]>>> trvDemand;
 	private Map<Id<Link>,Set<NetworkRoute>> linkToRouteIncidence = new HashMap<>();
 	private Map<Id<Link>,Set<NetworkRoute>> linkToTrvRouteIncidence = new HashMap<>();
-	private Map<NetworkRoute,Map<Integer,Set<Tuple<Id<Link>,Id<Link>>>>> transitTravelTimeQuery;
+	private Map<NetworkRoute,Map<Integer,Map<Tuple<Id<Link>,Id<Link>>,Tuple<Double,double[]>>>> transitTravelTimeQuery;
 	//
 	/**
 	 * This one is for event based demand input
@@ -28,7 +28,7 @@ public class EventBasedLTMLoadableDemand {
 	 * @param trvDemand for each transit route route->timeStamp->demand-demandGradient pair, here the demand can be summation of probabilities,
 	 *  hence the gradient will be summation of probability gradients
 	 */
-	public EventBasedLTMLoadableDemand(Map<NetworkRoute, Map<Integer,Tuple<Double,double[]>>> demand, Map<NetworkRoute, Map<Integer,Tuple<Double,double[]>>> trvDemand, Map<NetworkRoute,Map<Integer,Set<Tuple<Id<Link>,Id<Link>>>>> transitSubRouteQuery) {
+	public EventBasedLTMLoadableDemand(Map<NetworkRoute, Map<Integer,Tuple<Double,double[]>>> demand, Map<NetworkRoute, Map<Integer,Tuple<Double,double[]>>> trvDemand, Map<NetworkRoute,Map<Integer,Map<Tuple<Id<Link>,Id<Link>>,Tuple<Double,double[]>>>> transitSubRouteQuery) {
 		this.demand = demand;
 		this.trvDemand = trvDemand;
 		this.transitTravelTimeQuery = transitSubRouteQuery;
@@ -74,7 +74,7 @@ public class EventBasedLTMLoadableDemand {
 
 	
 	
-	public Map<NetworkRoute, Map<Integer,Set<Tuple<Id<Link>, Id<Link>>>>> getTransitTravelTimeQuery() {
+	public Map<NetworkRoute, Map<Integer,Map<Tuple<Id<Link>, Id<Link>>,Tuple<Double,double[]>>>> getTransitTravelTimeQuery() {
 		return transitTravelTimeQuery;
 	}
 	public Map<Id<Link>, Set<NetworkRoute>> getLinkToRouteIncidence() {

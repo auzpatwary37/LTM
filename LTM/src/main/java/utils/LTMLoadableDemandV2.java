@@ -22,12 +22,12 @@ public class LTMLoadableDemandV2 {
 	private Map<NetworkRoute, Map<String,Tuple<Double,double[]>>> demand;
 	private Map<NetworkRoute, Map<String,Tuple<Double,double[]>>> trvDemand;
 	private Map<String,Tuple<Double,Double>> demandTimeBean;
-	private Map<NetworkRoute,Map<String,Map<Tuple<Id<Link>,Id<Link>>,Double>>> transitTravelTimeQuery;
+	private Map<NetworkRoute,Map<String,Map<Tuple<Id<Link>,Id<Link>>,Tuple<Double,double[]>>>> transitTravelTimeQuery;
 	
 	private Map<Id<Link>,Set<NetworkRoute>> linkToRouteIncidence = new HashMap<>();
 	private Map<Id<Link>,Set<NetworkRoute>> linkToTrvRouteIncidence = new HashMap<>();
 	
-	public LTMLoadableDemandV2(Map<NetworkRoute, Map<String,Tuple<Double,double[]>>> demand, Map<NetworkRoute, Map<String,Tuple<Double,double[]>>> trvDemand, Map<String, Tuple<Double,Double>> timeBean, Map<NetworkRoute,Map<String,Map<Tuple<Id<Link>,Id<Link>>,Double>>> transitSubRouteQuery) {
+	public LTMLoadableDemandV2(Map<NetworkRoute, Map<String,Tuple<Double,double[]>>> demand, Map<NetworkRoute, Map<String,Tuple<Double,double[]>>> trvDemand, Map<String, Tuple<Double,Double>> timeBean, Map<NetworkRoute,Map<String,Map<Tuple<Id<Link>,Id<Link>>,Tuple<Double,double[]>>>> transitSubRouteQuery) {
 		this.demand = demand;
 		this.trvDemand = trvDemand;
 		this.demandTimeBean = timeBean;
@@ -57,7 +57,7 @@ public class LTMLoadableDemandV2 {
 		});
 	}
 	
-	public Map<NetworkRoute, Map<String, Map<Tuple<Id<Link>, Id<Link>>, Double>>> getTransitTravelTimeQuery() {
+	public Map<NetworkRoute, Map<String, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Double,double[]>>>> getTransitTravelTimeQuery() {
 		return transitTravelTimeQuery;
 	}
 	

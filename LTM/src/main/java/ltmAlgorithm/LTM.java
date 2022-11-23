@@ -2,9 +2,11 @@ package ltmAlgorithm;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 import java.util.Set;
 
 import org.apache.commons.math.linear.MatrixUtils;
@@ -15,6 +17,7 @@ import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.utils.collections.Tuple;
+import org.matsim.facilities.ActivityFacility;
 
 import linkModels.LinkModel;
 import nodeModels.DestinationNodeModel;
@@ -234,7 +237,7 @@ public class LTM implements DNL{
 		Map<NetworkRoute, Map<String, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>>>> result = new HashMap<>();
 		this.demand.getTransitTravelTimeQuery().entrySet().parallelStream().forEach(d->{
 			result.put(d.getKey(), new HashMap<>());
-			for(Entry<String, Map<Tuple<Id<Link>, Id<Link>>, Double>> timeD:d.getValue().entrySet()) {
+			for(Entry<String, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>>> timeD:d.getValue().entrySet()) {
 				result.get(d.getKey()).put(timeD.getKey(), new HashMap<>());
 				for(Tuple<Id<Link>,Id<Link>> lPair:timeD.getValue().keySet()) {
 					double[] departureTime = new double[n];
@@ -264,9 +267,9 @@ public class LTM implements DNL{
 		Map<NetworkRoute, Map<Integer, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>>>> result = new HashMap<>();
 		this.eDemand.getTransitTravelTimeQuery().entrySet().parallelStream().forEach(d->{
 			result.put(d.getKey(), new HashMap<>());
-			for(Entry<Integer, Set<Tuple<Id<Link>, Id<Link>>>> timeD:d.getValue().entrySet()) {
+			for(Entry<Integer, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>>> timeD:d.getValue().entrySet()) {
 				result.get(d.getKey()).put(timeD.getKey(), new HashMap<>());
-				for(Tuple<Id<Link>, Id<Link>> linkPair:timeD.getValue()) {
+				for(Tuple<Id<Link>, Id<Link>> linkPair:timeD.getValue().keySet()) {
 					TuplesOfThree<Double,Double,double[]> out = LTMUtils.getRouteTravelTime(d.getKey(), timePoints, timeD.getKey(),
 							this.linkModels.get(linkPair.getFirst()), this.linkModels.get(linkPair.getSecond()));
 					result.get(d.getKey()).get(timeD.getKey()).put(linkPair, new Tuple<>(out.getFirst(),out.getThird()));
@@ -284,20 +287,56 @@ public class LTM implements DNL{
 		Map<Id<Link>,double[][]> Nrpx0 = new HashMap<>();
 		Map<Id<Link>,double[][]> Nrpxl = new HashMap<>();
 		
-		Map<Id<Link>,Map<NetworkRoute,Map<Tuple<Id<Link>,Id<Link>>,double[]>>> linkPassengerDemand = new HashMap<>();
+		
+		Map<Id<Link>,Map<NetworkRoute,Map<Id<Link>,Tuple<double[],double[][]>>>> linkPassengerDemand = new HashMap<>();
 		
 		if(this.demand!=null) {
-			for(int t = 1;t<this.timeStepSize;t++) {
+			for(int t = 0;t<this.timeStepSize;t++) {
+				int tt = t;
 				for(Entry<String, Tuple<Double, Double>> timeBean:this.demand.getDemandTimeBean().entrySet()) {//loop through each time step
 					if(this.timePoints[t]>=timeBean.getValue().getFirst() && this.timePoints[t]<timeBean.getValue().getSecond()) {
 						this.demand.getTransitTravelTimeQuery().entrySet().forEach(r->{
-							
+							r.getValue().get(timeBean.getKey()).entrySet().forEach(l2l->{
+								if(!linkPassengerDemand.containsKey(l2l.getKey().getFirst()))linkPassengerDemand.put(l2l.getKey().getFirst(), new HashMap<>());
+								if(!linkPassengerDemand.get(l2l.getKey().getFirst()).containsKey(r.getKey()))linkPassengerDemand.get(l2l.getKey().getFirst()).put(r.getKey(),new HashMap<>());
+								if(!linkPassengerDemand.get(l2l.getKey().getFirst()).get(r.getKey()).containsKey(l2l.getKey().getSecond()))
+									linkPassengerDemand.get(l2l.getKey().getFirst()).get(r.getKey()).put(l2l.getKey().getSecond(),
+											new Tuple<double[],double[][]>(new double[this.timePoints.length], new double[this.timePoints.length][this.variables.getKeySet().size()]));
+								double a;
+								if(tt == 0 )a = 0;
+								else a = this.timePoints[tt-1];
+								
+								double demand = l2l.getValue().getFirst()/(this.demand.getDemandTimeBean().get(timeBean.getKey()).getSecond()-this.demand.getDemandTimeBean().get(timeBean.getKey()).getFirst())*(this.timePoints[tt]-a);
+								linkPassengerDemand.get(l2l.getKey().getFirst()).get(r.getKey()).get(l2l.getKey().getSecond()).getFirst()[tt] = demand;
+								linkPassengerDemand.get(l2l.getKey().getFirst()).get(r.getKey()).get(l2l.getKey().getSecond()).getSecond()[tt] = 
+										MatrixUtils.createRealVector(l2l.getValue().getSecond()).
+										mapMultiply((this.timePoints[tt]-a)/(this.demand.getDemandTimeBean().get(timeBean.getKey()).getSecond()-this.demand.getDemandTimeBean().get(timeBean.getKey()).getFirst())).getData();
+							});
 						});
 					}
 				}
 			}
 		}else if(this.eDemand!=null) {
 			
+			this.eDemand.getTransitTravelTimeQuery().entrySet().stream().forEach(r->{
+				r.getValue().entrySet().stream().forEach(tp->{
+					Map<Integer,Set<Integer>> timePointsLTMTodemandTimePoints = new HashMap<>();
+					
+					for(int t = 0;t<this.timePoints.length;t++) {
+						double demand = 0;
+						RealVector demandGrad = MatrixUtils.createRealVector(new double[this.variables.getKeySet().size()]);
+						Set<Integer> tSet = new HashSet<>();
+						double a = 0;
+						if(t>0)a = this.timePoints[t-1];
+						for(int tt:r.getValue().keySet()) {
+							if(tt<this.timePoints[t]&&tt>a) {
+								tSet.add(tt);
+								
+							}
+						}
+					}
+				});
+			});
 		}else {
 			throw new IllegalArgumentException("Both demand and event based demands are null.");
 		}
@@ -307,5 +346,17 @@ public class LTM implements DNL{
 		}
 		
 	}
+	
+	public static ActivityFacility drawRandomFacility(Map<Id<ActivityFacility>,ActivityFacility> facilities) {
+
+        Random generator = new Random();
+
+        List<Map.Entry<Id<ActivityFacility>,ActivityFacility>> entries = new ArrayList<>(facilities.entrySet());
+
+        ActivityFacility randomValue = entries.get(generator.nextInt(entries.size())).getValue();
+
+        return randomValue;
+
+    }
 
 }
