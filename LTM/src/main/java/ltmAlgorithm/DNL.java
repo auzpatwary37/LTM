@@ -49,4 +49,7 @@ public interface DNL {
 	public Map<NetworkRoute,Map<String,Map<Tuple<Id<Link>,Id<Link>>,Tuple<Double,double[]>>>> getTimeBeanTransitTravelTime(int numberOfTimePointsToAverage);
 	
 	public Map<NetworkRoute,Map<Integer,Map<Tuple<Id<Link>,Id<Link>>,Tuple<Double,double[]>>>> getTimeStampedTransitTravelTime();
+
+
+	public void simulateTransit();
 }

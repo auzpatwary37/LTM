@@ -203,7 +203,7 @@ public class LTMUtils{
 		
 		if(dX!=null && dY!=null && dx!=null){
 			RealVector numeratorGrad = Y2minusY1Grad.mapMultiply(xminusX1).add(xminusX1Grad.mapMultiply(Y2minusY1));
-			dy = numeratorGrad.mapMultiply(X2minusX1).subtract(X2minusX1Grad.mapMultiply(Y2minusY1*xminusX1)).mapDivide(X2minusX1*X2minusX1).getData();
+			dy = numeratorGrad.mapMultiply(X2minusX1).subtract(X2minusX1Grad.mapMultiply(Y2minusY1*xminusX1)).mapDivide(X2minusX1*X2minusX1).add(dY.getFirst()).getData();
 		}
 		return new Tuple<>(y,dy);
 		
@@ -577,5 +577,86 @@ public class LTMUtils{
 		return new TuplesOfThree<>(volume,volumedt,dVolume);
 	}
 	
+	public static <T> Map<T,TuplesOfThree<Double,Double,double[]>> proportionalDistribution(TuplesOfThree<Double,Double,double[]>toDistribute,Map<T,TuplesOfThree<Double,Double,double[]>> proportion) {
+		Map<T,TuplesOfThree<Double,Double,double[]>> distributedProportion = new HashMap<>();
+
+		double supply = toDistribute.getFirst();
+		double supplydt = toDistribute.getSecond();
+		RealVector dsupply = MatrixUtils.createRealVector(toDistribute.getThird());
+
+		double total = 0;
+		double totaldt = 0;
+		RealVector dTotal = MatrixUtils.createRealVector(new double[toDistribute.getThird().length]);
+
+		for(Entry<T, TuplesOfThree<Double, Double, double[]>> d:proportion.entrySet()) {
+			total+=d.getValue().getFirst();
+			totaldt+=d.getValue().getSecond();
+			dTotal = dTotal.add(d.getValue().getThird());
+		}
+		if(supply==0||total==0) {
+			for(Entry<T, TuplesOfThree<Double, Double, double[]>> d:proportion.entrySet()) {
+				distributedProportion.put(d.getKey(), new TuplesOfThree<Double,Double,double[]>(0.,0.,new double[toDistribute.getThird().length]));
+			}
+			return distributedProportion;
+		}else {
+			Map<T,TuplesOfThree<Double,Double,double[]>> newProportions = new HashMap<>();
+			double newSupply = 0;
+			double newSupplydt = 0;
+			RealVector dNewSupply = MatrixUtils.createRealVector(new double[dsupply.getData().length]);
+			for(Entry<T, TuplesOfThree<Double, Double, double[]>> d:proportion.entrySet()) {
+				double p = supply*d.getValue().getFirst()/total;
+				double pdt = (total*(d.getValue().getFirst()*supplydt+supply*d.getValue().getSecond())-d.getValue().getFirst()*supply*totaldt)/(total*total);
+				RealVector dp = dsupply.mapMultiply(d.getValue().getFirst()).add(MatrixUtils.createRealVector(d.getValue().getThird()).mapMultiply(supply)).mapMultiply(total).subtract(dTotal.mapMultiply(d.getValue().getFirst()*supply)).mapDivide(total*total);
+
+				distributedProportion.put(d.getKey(), new TuplesOfThree<Double,Double,double[]>(p,pdt,dp.getData()));
+
+				if(p>d.getValue().getFirst()) {
+					newSupply+=p-d.getValue().getFirst();
+					newSupplydt+=pdt-d.getValue().getSecond();
+					dNewSupply.add(dp.subtract(d.getValue().getThird()));
+					newProportions.put(d.getKey(), new TuplesOfThree<Double,Double,double[]>(0.,0.,new double[d.getValue().getThird().length]));
+				}else {
+					newProportions.put(d.getKey(), new TuplesOfThree<Double,Double,double[]>(d.getValue().getFirst()-p,
+							d.getValue().getSecond()-pdt,MatrixUtils.createRealVector(d.getValue().getThird()).subtract(dp).getData()));
+				}
+			}
+			Map<? extends Object, TuplesOfThree<Double, Double, double[]>> additionalProportion = proportionalDistribution(new TuplesOfThree<Double,Double,double[]>(newSupply,newSupplydt,dNewSupply.getData()),newProportions);
+
+			for(Entry<? extends Object, TuplesOfThree<Double, Double, double[]>> d:distributedProportion.entrySet()) {
+				d.setValue(new TuplesOfThree<Double,Double,double[]>(d.getValue().getFirst()+additionalProportion.get(d.getKey()).getFirst(),
+						d.getValue().getSecond()+additionalProportion.get(d.getKey()).getSecond(),
+						MatrixUtils.createRealVector(d.getValue().getThird()).add(additionalProportion.get(d.getKey()).getThird()).getData()));
+			}
+		}
+		return distributedProportion;
+	}
+	/**
+	 * Convinient method to add two arrays 
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	public static double[] sum(double[] a, double[] b) {
+		if(a.length!=b.length)throw new IllegalArgumentException("Dimension mismatch!!!");
+		double[] c = new double[a.length];
+		for(int i = 0;i<a.length;i++) {
+			c[i] = a[i]+b[i];
+		}
+		return c;
+	}
 	
+	/**
+	 * Convinient method to subtract two arrays 
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	public static double[] subtract(double[] a, double[] b) {
+		if(a.length!=b.length)throw new IllegalArgumentException("Dimension mismatch!!!");
+		double[] c = new double[a.length];
+		for(int i = 0;i<a.length;i++) {
+			c[i] = a[i]-b[i];
+		}
+		return c;
+	}
 }

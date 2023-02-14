@@ -476,12 +476,13 @@ public class GenericNodeModel implements NodeModel{
 			int tAfter = timeStep;
 			for(int j = timeStep;j>=0;j--) {
 				if(flow<=inLink.getValue().getNx0()[j])tAfter = j;
-				if(flow>=inLink.getValue().getNx0()[j]) {
+				if(flow>inLink.getValue().getNx0()[j]) {
 					tBefore = j;
 					break;
 				}
 			}
-
+			if(tBefore>tAfter)tBefore=tAfter;
+			// What happens if time is zero?
 			RealVector tBeforeGrad = null;
 					
 			if(this.variables!=null)tBeforeGrad = MatrixUtils.createRealVector(inLink.getValue().getdNxl()[timeStep+1]).mapMultiply(1/inLink.getValue().getNx0dt()[tBefore]);
@@ -537,7 +538,7 @@ public class GenericNodeModel implements NodeModel{
 							flow,
 							inLink.getValue().getdNxl()[timeStep+1]);
 
-					Nrxl = NxrldtTuple.getFirst()-inLink.getValue().getNrxl()[rInd][timeStep];
+					Nrxl = NxrldtTuple.getFirst()-inLink.getValue().getNrxl()[rInd][timeStep];// maybe the second term is redundent Ashraf Feb23
 					if(this.variables!=null)dNrxl = NxrlTuple.getSecond();
 					Nrxldt = NxrldtTuple.getSecond()[0];
 				}
