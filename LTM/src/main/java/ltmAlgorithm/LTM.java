@@ -24,6 +24,7 @@ import nodeModels.DestinationNodeModel;
 import nodeModels.GenericNodeModel;
 import nodeModels.NodeModel;
 import nodeModels.OriginNodeModel;
+import transit.LinkTransitPassengerModel;
 import utils.EventBasedLTMLoadableDemand;
 import utils.LTMLoadableDemandV2;
 import utils.LTMUtils;
@@ -38,6 +39,7 @@ public class LTM implements DNL{
 	private final Network network;
 	private Map<Id<Link>,LinkModel> linkModels = new HashMap<>();
 	private Map<Id<Node>,NodeModel> nodeModels = new HashMap<>();
+	private Map<Id<Link>,LinkTransitPassengerModel> linkPassengerModel = new HashMap<>();
 	private Map<NetworkRoute, Tuple<OriginNodeModel,DestinationNodeModel>> routeODModels = new HashMap<>();
 	private Map<NetworkRoute, Tuple<OriginNodeModel,DestinationNodeModel>> trvRouteODModels = new HashMap<>();
 	private final int timeStepSize;
@@ -77,7 +79,11 @@ public class LTM implements DNL{
 		});
 		demand.getLinkToTrvRouteIncidence().entrySet().forEach(e->totalInc.compute(e.getKey(), 
 				(k,v)->{
-					if(v==null)return v;
+					if(v==null) {
+						List<NetworkRoute> rs = new ArrayList<>();
+						rs.addAll(e.getValue());
+						return rs;
+					}
 					else {
 						v.addAll(e.getValue());
 						return v;
@@ -148,7 +154,7 @@ public class LTM implements DNL{
 		
 	}
 	private void runLTMSimulation() {
-		for(int i = 0; i<this.timePoints.length;i++) {
+		for(int i = 0; i<this.timePoints.length-1;i++) {
 			int timeStep = i;
 			this.nodeModels.entrySet().parallelStream().forEach(e->{
 				e.getValue().performLTMStep(timeStep);
@@ -281,6 +287,17 @@ public class LTM implements DNL{
 	
 	@Override
 	public void simulateTransit() {
+		
+		for(Entry<Id<Link>, Set<NetworkRoute>> link:demand.getLinkToTrvRouteIncidence().entrySet()) {
+			LinkTransitPassengerModel lpModel = null;
+			if(!this.linkPassengerModel.containsKey(link.getKey())) {
+				lpModel = this.linkPassengerModel.put(link.getKey(), new LinkTransitPassengerModel(this.linkModels.get(link.getKey()), linkPassengerModel));
+			}else {
+				lpModel = this.linkPassengerModel.get(link.getKey());
+			}
+			
+		}
+				
 		
 		Map<Id<Link>,double[][][]> Nrpbax0 = new HashMap<>();
 		Map<Id<Link>,double[][][]> Nrpbaxl = new HashMap<>();

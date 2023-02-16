@@ -305,7 +305,7 @@ public class LTMUtils{
 						Nr[t] = Nr[t-1]+rate*(LTMTimePoints[t]- LTMTimePoints[t-1]);
 						if(dNr!=null && rateGrad!=null)dNr[t] = rateGrad.mapMultiply(LTMTimePoints[t]- LTMTimePoints[t-1]).add(dNr[t-1]).getData();							;
 					
-					}
+					} 
 				}
 			}else {
 				throw new IllegalArgumentException("Constant demand loading is not yet implemented!!");

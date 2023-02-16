@@ -26,12 +26,12 @@ import utils.MapToArray;
 import utils.TuplesOfThree;
 import utils.VariableDetails;
 
-public class LinkTransitPassenger {
+public class LinkTransitPassengerModel {
 	
 	private int T;
 	private double[] timeSteps;
 	private MapToArray<VariableDetails> variables;
-	private Map<Id<Link>,LinkTransitPassenger> linkTransitPassengerMap = new HashMap<>();// this is the map containing all the link transit passenger objects for all the 
+	private Map<Id<Link>,LinkTransitPassengerModel> linkTransitPassengerMap = new HashMap<>();// this is the map containing all the link transit passenger objects for all the 
 	private LinkModel link;// the corresponding link model. 
 	private MapToArray<NetworkRoute> routes;// routes going through this link
 	private Map<NetworkRoute, double[]> capacity;//for each route and each time step
@@ -64,18 +64,22 @@ public class LinkTransitPassenger {
 	private Map<NetworkRoute,Map<Id<Link>,double[][]>> dQueuedPassenger = new HashMap<>();
 	
 	
-	public LinkTransitPassenger(LinkModel link, Map<Id<Link>,LinkTransitPassenger> ltpMap, TransitSchedule ts, Vehicles tsv) {
+	public LinkTransitPassengerModel(LinkModel link, Map<Id<Link>,LinkTransitPassengerModel> ltpMap) {
 		this.link = link;
 		this.timeSteps = link.getTimePoints();
 		this.T = timeSteps.length;
 		this.variables = link.getVariables();
+		this.linkTransitPassengerMap = ltpMap;
+		this.linkTransitPassengerMap.put(link.getLink().getId(), this);
 	}
+	
 	
 	
 	public void addRoute(NetworkRoute r, Id<TransitLine> tlId, Id<TransitRoute> trId, double vehicleCapacity) {
 		this.transitLine_routeToNetworkRouteMap.put(tlId.toString()+"___"+trId.toString(),r);
 		this.vehicleCapacity.put(r, vehicleCapacity);
 	}
+	
 	
 	public void performInitialSetup() {
 		this.routes = new MapToArray<NetworkRoute>("transit routes on link",this.transitLine_routeToNetworkRouteMap.values());
@@ -126,7 +130,7 @@ public class LinkTransitPassenger {
 		
 		for(NetworkRoute r:this.routes.getKeySet()) {
 			
-			LinkTransitPassenger previousLink = this.linkTransitPassengerMap.get(findThePreviousLinkId(link.getLink().getId(),r));
+			LinkTransitPassengerModel previousLink = this.linkTransitPassengerMap.get(findThePreviousLinkId(link.getLink().getId(),r));
 			
 			// First calculate the supply gradient
 			double onBoard = 0;
@@ -363,7 +367,7 @@ public class LinkTransitPassenger {
 		throw new IllegalArgumentException("The link id "+currentLinkId+" is not present in the route. Please check!!!");
 	}
 
-	public Map<Id<Link>, LinkTransitPassenger> getLinkTransitPassengerMap() {
+	public Map<Id<Link>, LinkTransitPassengerModel> getLinkTransitPassengerMap() {
 		return linkTransitPassengerMap;
 	}
 
