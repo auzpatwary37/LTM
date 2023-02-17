@@ -539,7 +539,7 @@ public class LTMUtils{
 		
 		return new TuplesOfThree<>(volume,volumedt,dVolume);
 	}
-	
+	//TODO: not yet implemented
 	public static TuplesOfThree<double[],double[],double[][]> getLinkTravelTime(LinkModel link, double[] timePoints){
 		double[] volume = new double[timePoints.length];
 		double[] volumedt = new double[timePoints.length];
@@ -658,5 +658,60 @@ public class LTMUtils{
 			c[i] = a[i]-b[i];
 		}
 		return c;
+	}
+	
+	public static Map<NetworkRoute,double[]> processTransitPassengerCapacity(Map<String,Map<NetworkRoute,Double>> capacity, Map<String,Tuple<Double,Double>> demandTimeBean, double[] ltmTimeSteps){
+		Map<NetworkRoute,double[]> out = new HashMap<>();
+		capacity.entrySet().forEach(c->{
+			c.getValue().entrySet().forEach(r->{
+				if(!out.containsKey(r.getKey()))out.put(r.getKey(), new double[ltmTimeSteps.length]);
+				for(int i = 0;i<ltmTimeSteps.length;i++) {
+					double time = ltmTimeSteps[i];
+					if(time==0)time= 1;
+					if(time>demandTimeBean.get(c.getKey()).getFirst() && time<=demandTimeBean.get(c.getKey()).getSecond()) {
+						out.get(r.getKey())[i] = r.getValue();
+					}
+				}
+			});
+		});
+		
+		return out;
+	}
+	
+	
+	public static TuplesOfThree<Map<Id<Link>,double[]>,Map<Id<Link>,double[]>,Map<Id<Link>,double[][]>> generatePassengerDemand(LTMLoadableDemandV2 demand,NetworkRoute r, Id<Link> fromLink, double[] ltmTimeSteps){
+		Map<Id<Link>,double[]> q = new HashMap<>();
+		Map<Id<Link>,double[][]> dq = new HashMap<>();
+		Map<Id<Link>,double[]> qdt = new HashMap<>();
+		for(Entry<String, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>>> time:demand.getTransitTravelTimeQuery().get(r).entrySet()) {
+			for(int i = 0;i<ltmTimeSteps.length;i++) {
+				double t = ltmTimeSteps[i];
+				if(t==0)t=1;
+				if(t>demand.getDemandTimeBean().get(time.getKey()).getFirst() && t<=demand.getDemandTimeBean().get(time.getKey()).getSecond()) {
+					for(Entry<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>> l_l:time.getValue().entrySet()) {
+						if(l_l.getKey().getFirst().equals(fromLink)) {
+							if(!q.containsKey(l_l.getKey().getSecond())) {
+								q.put(l_l.getKey().getSecond(), new double[ltmTimeSteps.length]);
+								dq.put(l_l.getKey().getSecond(), new double[ltmTimeSteps.length][l_l.getValue().getSecond().length]);
+								qdt.put(l_l.getKey().getSecond(), new double[ltmTimeSteps.length]);
+							}
+							double ltmTime = 0;
+							double dmTime = demand.getDemandTimeBean().get(time.getKey()).getSecond()-demand.getDemandTimeBean().get(time.getKey()).getFirst();
+							if(i==0) {
+								ltmTime = (ltmTimeSteps[1]-ltmTimeSteps[0]);
+							}else{
+								ltmTime = (ltmTimeSteps[i]-ltmTimeSteps[i-1]);
+							}
+							q.get(l_l.getKey().getSecond())[i] = l_l.getValue().getFirst()/(dmTime)*(ltmTime);
+							dq.get(l_l.getKey().getSecond())[i] = MatrixUtils.createRealVector(l_l.getValue().getSecond()).mapMultiply(ltmTime/dmTime).toArray();
+							qdt.get(l_l.getKey().getSecond())[i] = 1/dmTime*l_l.getValue().getFirst();
+						}
+					}
+				}
+			}
+		}
+		
+		return new TuplesOfThree<>(q,qdt,dq);
+		
 	}
 }

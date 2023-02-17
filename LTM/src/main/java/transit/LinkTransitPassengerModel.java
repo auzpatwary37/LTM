@@ -38,7 +38,7 @@ public class LinkTransitPassengerModel {
 	private Map<NetworkRoute, double[][]> dcapacity;//for each route and each time step
 	private Map<NetworkRoute, double[]> capacitydt;//for each route and each time step
 	
-	private Map<NetworkRoute,Double> vehicleCapacity = new HashMap<>();
+	private Map<NetworkRoute,double[]> vehicleCapacity = new HashMap<>();
 	
 	private BiMap<String,NetworkRoute> transitLine_routeToNetworkRouteMap = HashBiMap.create();
 	
@@ -59,10 +59,11 @@ public class LinkTransitPassengerModel {
 	
 	private Map<NetworkRoute,Map<Id<Link>,double[]>> demandPassenger = new HashMap<>();
 	private Map<NetworkRoute,Map<Id<Link>,double[][]>> dDemandPassenger = new HashMap<>();
+	private Map<NetworkRoute,Map<Id<Link>,double[]>> demandPassengerdt = new HashMap<>();
 	
 	private Map<NetworkRoute,Map<Id<Link>,double[]>> queuedPassenger = new HashMap<>();
 	private Map<NetworkRoute,Map<Id<Link>,double[][]>> dQueuedPassenger = new HashMap<>();
-	
+	private Map<NetworkRoute,Map<Id<Link>,double[]>> queuedPassengerdt = new HashMap<>();
 	
 	public LinkTransitPassengerModel(LinkModel link, Map<Id<Link>,LinkTransitPassengerModel> ltpMap) {
 		this.link = link;
@@ -75,9 +76,17 @@ public class LinkTransitPassengerModel {
 	
 	
 	
-	public void addRoute(NetworkRoute r, Id<TransitLine> tlId, Id<TransitRoute> trId, double vehicleCapacity) {
+	public void addRoute(NetworkRoute r, Id<TransitLine> tlId, Id<TransitRoute> trId, double[] vehicleCapacity) {
 		this.transitLine_routeToNetworkRouteMap.put(tlId.toString()+"___"+trId.toString(),r);
 		this.vehicleCapacity.put(r, vehicleCapacity);
+	}
+	public void addRoute(NetworkRoute r, double[] vehicleCapacity, Map<Id<Link>,double[]>demand, Map<Id<Link>,double[][]>ddemand, Map<Id<Link>,double[]>demanddt) {
+		//this.transitLine_routeToNetworkRouteMap.put(tlId.toString()+"___"+trId.toString(),r);
+		this.vehicleCapacity.put(r, vehicleCapacity);
+		this.demandPassenger.put(r,demand);
+		this.dDemandPassenger.put(r,ddemand);
+		this.demandPassengerdt.put(r,demanddt);
+		
 	}
 	
 	
@@ -113,9 +122,9 @@ public class LinkTransitPassengerModel {
 			int rInd = this.link.getRoutes().getIndex(r);
 			
 			for(int i = 0;i<this.timeSteps.length;i++) {
-				this.capacity.get(r)[i] = (this.link.getNrxl()[rInd][i]-this.link.getNrx0()[rInd][i])*vehicleCapacity.get(r);
-				this.capacitydt.get(r)[i] = (this.link.getNrxldt()[rInd][i]-this.link.getNrx0dt()[rInd][i])*vehicleCapacity.get(r);
-				this.dcapacity.get(r)[i] = MatrixUtils.createRealVector(this.link.getdNrxl()[rInd][i]).subtract(this.link.getdNrx0()[rInd][i]).mapMultiply(vehicleCapacity.get(r)).toArray();
+				this.capacity.get(r)[i] = (this.link.getNrxl()[rInd][i]-this.link.getNrx0()[rInd][i])*vehicleCapacity.get(r)[i];
+				this.capacitydt.get(r)[i] = (this.link.getNrxldt()[rInd][i]-this.link.getNrx0dt()[rInd][i])*vehicleCapacity.get(r)[i];
+				this.dcapacity.get(r)[i] = MatrixUtils.createRealVector(this.link.getdNrxl()[rInd][i]).subtract(this.link.getdNrx0()[rInd][i]).mapMultiply(vehicleCapacity.get(r)[i]).toArray();
 			}
 		}
 	}
@@ -194,16 +203,19 @@ public class LinkTransitPassengerModel {
 			
 			for(Id<Link>link:links) {
 				double dd = 0;
+				double ddt = 0;
 				RealVector ddd = MatrixUtils.createRealVector(new double[demptySeat.getData().length]);
 				if(this.demandPassenger.get(r).get(link)!=null) {
 					dd+=this.demandPassenger.get(r).get(link)[timeId];
 					ddd.add(this.dDemandPassenger.get(r).get(link)[timeId]);
+					ddt+=this.demandPassengerdt.get(r).get(link)[timeId];
 				}
 				if(this.queuedPassenger.get(r).get(link)!=null) {
 					dd+=this.queuedPassenger.get(r).get(link)[timeId];
 					ddd.add(this.dQueuedPassenger.get(r).get(link)[timeId]);
+					ddt+=this.queuedPassengerdt.get(r).get(link)[timeId];
 				}
-				demand.put(link, new TuplesOfThree<Double,Double,double[]>(dd,50.,ddd.getData()));// Here assuming the passenger flow rate is 50 per second
+				demand.put(link, new TuplesOfThree<Double,Double,double[]>(dd,ddt,ddd.getData()));// Here assuming the passenger flow rate is 50 per second
 				
 			}
 			
@@ -225,7 +237,7 @@ public class LinkTransitPassengerModel {
 					this.onBoardPassengerX0dt.get(r).get(this.link.getLink().getId()).put(link, new double[this.timeSteps.length]);
 				}
 				this.onBoardPassengerX0.get(r).get(this.link.getLink().getId()).get(link)[timeId+1] = boarding.get(link).getFirst();
-				this.onBoardPassengerX0dt.get(r).get(this.link.getLink().getId()).get(link)[timeId+1] = boarding.get(link).getSecond();
+				this.onBoardPassengerX0dt.get(r).get(this.link.getLink().getId()).get(link)[timeId+1] = Math.max(boarding.get(link).getSecond(),50);
 				this.dOnBoardPassengerX0.get(r).get(this.link.getLink().getId()).get(link)[timeId+1] = boarding.get(link).getThird();
 				
 				if(!this.NrPassengerBoard.get(r).containsKey(link)) {
@@ -234,15 +246,15 @@ public class LinkTransitPassengerModel {
 					this.dNrPassengerBoard.get(r).put(link, new double[this.timeSteps.length][this.variables.getKeySet().size()]);
 				}
 				if(timeId==0) {
-					this.NrPassengerBoard.get(r).get(link)[timeId] = demand.get(link).getFirst();
-					this.dNrPassengerBoard.get(r).get(link)[timeId] = demand.get(link).getThird();
-					this.NrPassengerBoarddt.get(r).get(link)[timeId] = demand.get(link).getSecond();
+					this.NrPassengerBoard.get(r).get(link)[timeId] = boarding.get(link).getFirst();
+					this.dNrPassengerBoard.get(r).get(link)[timeId] = boarding.get(link).getThird();
+					this.NrPassengerBoarddt.get(r).get(link)[timeId] = Math.max(boarding.get(link).getSecond(),50);
 					
 				}else {
-					this.NrPassengerBoard.get(r).get(link)[timeId] = demand.get(link).getFirst()+this.NrPassengerBoard.get(r).get(link)[timeId-1];
-					this.dNrPassengerBoard.get(r).get(link)[timeId] = LTMUtils.sum(demand.get(link).getThird(),
+					this.NrPassengerBoard.get(r).get(link)[timeId] = boarding.get(link).getFirst()+this.NrPassengerBoard.get(r).get(link)[timeId-1];
+					this.dNrPassengerBoard.get(r).get(link)[timeId] = LTMUtils.sum(boarding.get(link).getThird(),
 							this.dNrPassengerBoard.get(r).get(link)[timeId-1]);
-					this.NrPassengerBoarddt.get(r).get(link)[timeId] = demand.get(link).getSecond()+
+					this.NrPassengerBoarddt.get(r).get(link)[timeId] = Math.max(boarding.get(link).getSecond(),50)+
 							this.NrPassengerBoarddt.get(r).get(link)[timeId-1];
 					
 				}
@@ -250,10 +262,11 @@ public class LinkTransitPassengerModel {
 				if(!this.queuedPassenger.get(r).containsKey(link)) {
 					this.queuedPassenger.get(r).put(link, new double[this.timeSteps.length]);
 					this.dQueuedPassenger.get(r).put(link, new double[this.timeSteps.length][this.variables.getKeySet().size()]);
+					this.queuedPassengerdt.get(r).put(link, new double[this.timeSteps.length]);
 				}
 				this.queuedPassenger.get(r).get(link)[timeId+1] = remainingDemand.getFirst();
 				this.dQueuedPassenger.get(r).get(link)[timeId+1] = remainingDemand.getThird();
-				
+				this.queuedPassengerdt.get(r).get(link)[timeId+1] = remainingDemand.getSecond();
 				
 			}
 			
@@ -455,4 +468,27 @@ public class LinkTransitPassengerModel {
 		return dQueuedPassenger;
 	}
 
+	public void setDemandPassenger(Map<NetworkRoute, Map<Id<Link>, double[]>> demandPassenger) {
+		this.demandPassenger = demandPassenger;
+	}
+
+
+
+	public Map<NetworkRoute, Map<Id<Link>, double[]>> getDemandPassengerdt() {
+		return demandPassengerdt;
+	}
+
+
+
+	public void setDemandPassengerdt(Map<NetworkRoute, Map<Id<Link>, double[]>> demandPassengerdt) {
+		this.demandPassengerdt = demandPassengerdt;
+	}
+
+
+
+	public void setdDemandPassenger(Map<NetworkRoute, Map<Id<Link>, double[][]>> dDemandPassenger) {
+		this.dDemandPassenger = dDemandPassenger;
+	}
+
+	
 }

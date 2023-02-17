@@ -38,7 +38,7 @@ public class LTMLoadableDemandV2 {
 	private Map<Id<Link>,Set<NetworkRoute>> linkToRouteIncidence = new HashMap<>();
 	private Map<Id<Link>,Set<NetworkRoute>> linkToTrvRouteIncidence = new HashMap<>();
 	private Map<Id<TransitLine>,Map<Id<TransitRoute>,NetworkRoute>> lineRouteMapping = new HashMap<>();
-	private Map<NetworkRoute,Double> capacity = new HashMap<>();
+	private Map<String, Map<NetworkRoute,Double>> capacity = new HashMap<>();
 	
 	//Info saved if created from metamodel 
 	
@@ -53,7 +53,7 @@ public class LTMLoadableDemandV2 {
 	
 	public LTMLoadableDemandV2(Map<NetworkRoute, Map<String,Tuple<Double,double[]>>> demand, Map<NetworkRoute, Map<String,Tuple<Double,double[]>>> trvDemand, Map<String, Tuple<Double,Double>> timeBean,
 			Map<NetworkRoute,Map<String,Map<Tuple<Id<Link>,Id<Link>>,Tuple<Double,double[]>>>> transitSubRouteQuery,Map<Id<TransitLine>,Map<Id<TransitRoute>,NetworkRoute>>lineRouteMapping, 
-			Map<NetworkRoute,Double>capacity, MapToArray<VariableDetails> variables) {
+			Map<String,Map<NetworkRoute,Double>>capacity, MapToArray<VariableDetails> variables) {
 		this.demand = demand;
 		this.trvDemand = trvDemand;
 		this.demandTimeBean = timeBean;
@@ -145,20 +145,24 @@ public class LTMLoadableDemandV2 {
 				this.lineRouteMapping.get(tl.getKey()).put(tr.getKey(), tr.getValue().getRoute());
 				this.trvRoutes.put(tl.getKey().toString()+"___"+tr.getKey().toString(), tr.getValue().getRoute());
 				Map<String,Tuple<Double,double[]>> demandFromRoute = new HashMap<>();
-				double space = 0;
-				int cnt = 0;
+				Map<String,Double> space = new HashMap<>();
+				Map<String,Integer> cnt = new HashMap<>();
 				for(Entry<Id<Departure>, Departure> dp:tr.getValue().getDepartures().entrySet()) {
 					Vehicle v = this.trv.getVehicles().get(dp.getValue().getVehicleId());
-					space += v.getType().getCapacity().getSeats()+v.getType().getCapacity().getStandingRoom();
-					cnt++;
 					String timeBeanId = getTimeBean(demandTimeBean, dp.getValue().getDepartureTime());
+					space.compute(timeBeanId, (k,vv)->vv==null?v.getType().getCapacity().getSeats()+v.getType().getCapacity().getStandingRoom():vv+v.getType().getCapacity().getSeats()+v.getType().getCapacity().getStandingRoom());
+					cnt.compute(timeBeanId, (k,vv)->vv==null?1:vv+1);
+					
 					if(!demandFromRoute.containsKey(timeBeanId))demandFromRoute.put(timeBeanId, new Tuple<Double,double[]>(0.,new double[this.variables.getKeySet().size()]));
 					demandFromRoute.put(timeBeanId, new Tuple<Double,double[]>(demandFromRoute.get(timeBeanId).getFirst()+v.getType().getPcuEquivalents()*this.scalingFactor,
 							LTMUtils.sum(demandFromRoute.get(timeBeanId).getSecond(), new double[this.variables.getKeySet().size()])));
 				}
 				
 				NetworkRoute r = tr.getValue().getRoute();
-				if(cnt!=0)this.capacity.put(r, space/cnt*this.scalingFactor);
+				for(Entry<String, Double> s:space.entrySet()) {
+					if(!this.capacity.containsKey(s.getKey()))this.capacity.put(s.getKey(), new HashMap<>());
+					if(cnt.get(s.getKey())!=0)this.capacity.get(s.getKey()).put(r, s.getValue()/cnt.get(s.getKey()));
+				}
 				if(!this.linkToTrvRouteIncidence.containsKey(r.getStartLinkId()))this.linkToTrvRouteIncidence.put(r.getStartLinkId(), new HashSet<>());
 				if(!this.linkToTrvRouteIncidence.containsKey(r.getEndLinkId()))this.linkToTrvRouteIncidence.put(r.getEndLinkId(), new HashSet<>());
 				this.linkToTrvRouteIncidence.get(r.getStartLinkId()).add(r);
@@ -232,4 +236,7 @@ public class LTMLoadableDemandV2 {
 		return timeBeanId;
 	}
 	
+	public Map<String, Map<NetworkRoute, Double>> getCapacity(){
+		return this.capacity;
+	}
 }
