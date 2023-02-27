@@ -136,4 +136,7 @@ public interface LinkModel {
 	public double[][] getNrx0dt();
 	
 	public MapToArray<VariableDetails> getVariables();
+	
+	
+	public void reset();
 }

@@ -9,8 +9,10 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
 
-import org.apache.commons.math3.linear.MatrixUtils;
-import org.apache.commons.math3.linear.RealVector;
+import org.apache.commons.math.linear.MatrixUtils;
+import org.apache.commons.math.linear.RealVector;
+
+
 
 public class MapToArray<T>{
 private final List<T>keySet;

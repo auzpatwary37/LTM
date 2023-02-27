@@ -101,7 +101,15 @@ public class DestinationNodeModel{
 		return inLinkModel;
 	}
 
-	
+	public void reset() {
+		this.Gi = new double[this.LTMTimePoints.length];
+		this.dGi = new double[this.LTMTimePoints.length][this.variables.getKeySet().size()];
+		this.Gidt = new double[this.LTMTimePoints.length];
+		
+		this.Si = new double[this.LTMTimePoints.length];
+		this.dSi = new double[this.LTMTimePoints.length][this.variables.getKeySet().size()];
+		this.Sidt = new double[this.LTMTimePoints.length];
+	}
 	
 
 }

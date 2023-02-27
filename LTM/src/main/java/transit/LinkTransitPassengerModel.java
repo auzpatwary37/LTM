@@ -61,6 +61,10 @@ public class LinkTransitPassengerModel {
 	private Map<NetworkRoute,Map<Id<Link>,double[][]>> dDemandPassenger = new HashMap<>();
 	private Map<NetworkRoute,Map<Id<Link>,double[]>> demandPassengerdt = new HashMap<>();
 	
+	private Map<NetworkRoute,Map<Id<Link>,double[]>>cumulativeDemandPassenger = new HashMap<>();
+	private Map<NetworkRoute,Map<Id<Link>,double[][]>>dcumulativeDemandPassenger = new HashMap<>();
+	private Map<NetworkRoute,Map<Id<Link>,double[]>>cumulativeDemandPassengerdt = new HashMap<>();
+	
 	private Map<NetworkRoute,Map<Id<Link>,double[]>> queuedPassenger = new HashMap<>();
 	private Map<NetworkRoute,Map<Id<Link>,double[][]>> dQueuedPassenger = new HashMap<>();
 	private Map<NetworkRoute,Map<Id<Link>,double[]>> queuedPassengerdt = new HashMap<>();
@@ -86,9 +90,33 @@ public class LinkTransitPassengerModel {
 		this.demandPassenger.put(r,demand);
 		this.dDemandPassenger.put(r,ddemand);
 		this.demandPassengerdt.put(r,demanddt);
+		this.calcCumulativeDemand();
 		
 	}
-	
+	public void calcCumulativeDemand() {
+		for(Entry<NetworkRoute, Map<Id<Link>, double[]>> d:this.demandPassenger.entrySet()) {
+			this.cumulativeDemandPassenger.put(d.getKey(), new HashMap<>());
+			this.dcumulativeDemandPassenger.put(d.getKey(), new HashMap<>());
+			this.cumulativeDemandPassengerdt.put(d.getKey(), new HashMap<>());
+			
+			for(Entry<Id<Link>, double[]> l:d.getValue().entrySet()) {
+				this.cumulativeDemandPassenger.get(d.getKey()).put(l.getKey(), new double[l.getValue().length]);
+				this.dcumulativeDemandPassenger.get(d.getKey()).put(l.getKey(), new double[l.getValue().length][this.dDemandPassenger.get(d.getKey()).get(l.getKey())[0].length]);
+				this.cumulativeDemandPassengerdt.get(d.getKey()).put(l.getKey(), new double[l.getValue().length]);
+				
+				this.cumulativeDemandPassenger.get(d.getKey()).get(l.getKey())[0] = l.getValue()[0];
+				this.dcumulativeDemandPassenger.get(d.getKey()).get(l.getKey())[0] = this.dDemandPassenger.get(d.getKey()).get(l.getKey())[0];
+				this.cumulativeDemandPassengerdt.get(d.getKey()).get(l.getKey())[0] = this.demandPassengerdt.get(d.getKey()).get(l.getKey())[0];
+				for(int i = 1; i<l.getValue().length;i++) {
+					this.cumulativeDemandPassenger.get(d.getKey()).get(l.getKey())[i] = l.getValue()[0]+this.cumulativeDemandPassenger.get(d.getKey()).get(l.getKey())[i-1];
+					this.dcumulativeDemandPassenger.get(d.getKey()).get(l.getKey())[i] = LTMUtils.sum(this.dDemandPassenger.get(d.getKey()).get(l.getKey())[0],this.dcumulativeDemandPassenger.get(d.getKey()).get(l.getKey())[i-1]);
+					this.cumulativeDemandPassengerdt.get(d.getKey()).get(l.getKey())[i] = this.demandPassengerdt.get(d.getKey()).get(l.getKey())[0]+this.cumulativeDemandPassengerdt.get(d.getKey()).get(l.getKey())[i-1];
+				}
+			}
+		}
+		
+		
+	}
 	
 	public void performInitialSetup() {
 		this.routes = new MapToArray<NetworkRoute>("transit routes on link",this.transitLine_routeToNetworkRouteMap.values());
@@ -470,6 +498,7 @@ public class LinkTransitPassengerModel {
 
 	public void setDemandPassenger(Map<NetworkRoute, Map<Id<Link>, double[]>> demandPassenger) {
 		this.demandPassenger = demandPassenger;
+		
 	}
 
 
@@ -489,6 +518,26 @@ public class LinkTransitPassengerModel {
 	public void setdDemandPassenger(Map<NetworkRoute, Map<Id<Link>, double[][]>> dDemandPassenger) {
 		this.dDemandPassenger = dDemandPassenger;
 	}
+
+
+
+	public Map<NetworkRoute, Map<Id<Link>, double[]>> getCumulativeDemandPassenger() {
+		return cumulativeDemandPassenger;
+	}
+
+
+
+	public Map<NetworkRoute, Map<Id<Link>, double[][]>> getDcumulativeDemandPassenger() {
+		return dcumulativeDemandPassenger;
+	}
+
+
+
+	public Map<NetworkRoute, Map<Id<Link>, double[]>> getCumulativeDemandPassengerdt() {
+		return cumulativeDemandPassengerdt;
+	}
+	
+	
 
 	
 }

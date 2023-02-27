@@ -21,6 +21,7 @@ import org.matsim.core.utils.collections.Tuple;
 
 import linkModels.LinkModel;
 import ltmAlgorithm.DNL;
+import transit.LinkTransitPassengerModel;
 
 /**
  * 
@@ -466,6 +467,170 @@ public class LTMUtils{
 		return new TuplesOfThree<>(travelTime,travelTimedt,dTravelTime);
 		
 	}
+	
+	
+	public static Tuple<TuplesOfThree<Double,Double,double[]>,TuplesOfThree<Double,Double,double[]>> getTransitRouteWaitAndTravelTime(NetworkRoute r, double[] timePoints, double departureTime, LinkTransitPassengerModel boardingLinkModel, LinkTransitPassengerModel alightingLinkModel){
+		
+		double travelTime = 0;
+		double travelTimedt = 0;
+		double[] dTravelTime = null;
+		
+		double waitTime = 0;
+		double waitTimedt = 0;
+		double[] dWaitTime = null;
+		
+		int timeStepBefore = 0;
+		int timeStepAfter = 0;
+		
+		for(int t=0;t<timePoints.length;t++) {
+			
+			if(timePoints[t]<=departureTime) {
+				timeStepBefore = t;
+			}else {
+				break;
+			}
+		}
+		for(int t=timePoints.length-1;t<0;t--) {
+				
+			if(timePoints[t]>=departureTime) {
+				timeStepAfter = t;
+			}else {
+				break;
+			}
+		}
+		
+		
+		
+		
+		
+		
+		double nrx0Before = boardingLinkModel.getCumulativeDemandPassenger().get(r).get(alightingLinkModel.getLink().getLink().getId())[timeStepBefore];
+		double nrx0Beforedt = boardingLinkModel.getCumulativeDemandPassengerdt().get(r).get(alightingLinkModel.getLink().getLink().getId())[timeStepBefore];
+		double[] dnrx0Before = boardingLinkModel.getDcumulativeDemandPassenger().get(r).get(alightingLinkModel.getLink().getLink().getId())[timeStepBefore];
+		
+		
+		double nrx0After = boardingLinkModel.getCumulativeDemandPassenger().get(r).get(alightingLinkModel.getLink().getLink().getId())[timeStepAfter];
+		double nrx0Afterdt = boardingLinkModel.getCumulativeDemandPassengerdt().get(r).get(alightingLinkModel.getLink().getLink().getId())[timeStepAfter];
+		double[] dnrx0After = boardingLinkModel.getDcumulativeDemandPassenger().get(r).get(alightingLinkModel.getLink().getLink().getId())[timeStepAfter];
+		
+		double nrx0 = 0;
+		double nrx0dt = 0;
+		RealVector dnrx0 = null;
+		
+		if(timeStepBefore!=timeStepAfter) {
+		
+			Tuple<Double,double[]> dnrx0Tuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>((double)timeStepBefore,(double)timeStepAfter),new Tuple<>(nrx0Before,nrx0After),new Tuple<>(new double[dnrx0Before.length],
+					new double[dnrx0After.length]), new Tuple<>(dnrx0Before,dnrx0After), departureTime, new double[dnrx0After.length]);
+			
+			Tuple<Double,double[]> nrx0dtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>((double)timeStepBefore,(double)timeStepAfter),new Tuple<>(nrx0Before,nrx0After),new Tuple<>(new double[] {0},
+					new double[] {0}) , new Tuple<>(new double[] {nrx0Beforedt},new double[] {nrx0Afterdt}), departureTime, new double[] {0});
+			
+			nrx0 = dnrx0Tuple.getFirst();
+			nrx0dt = nrx0dtTuple.getSecond()[0];
+			dnrx0 = MatrixUtils.createRealVector(dnrx0Tuple.getSecond());
+		}else {
+			nrx0 = nrx0Before;
+			nrx0dt = nrx0Beforedt;
+			dnrx0 = MatrixUtils.createRealVector(dnrx0Before);
+		}
+		{
+		//Find out the tBefore and tAfter for the boarding
+		int tBefore = timeStepBefore;
+		int tAfter = timeStepBefore;
+		
+		for(int j = timeStepBefore;j<timePoints.length;j++) {
+			if(nrx0>=boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[j]) {
+				tBefore = j;
+				
+			}
+			if(nrx0<=boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[j]) {
+				tAfter = j;
+				break;
+			}
+		}
+		double tBeforedt = 1/boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tBefore]*nrx0dt;
+		RealVector dtBefore = dnrx0.mapMultiply(1/boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tBefore]);
+		
+		double tAfterdt = 1/boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tAfter]*nrx0dt;
+		RealVector dtAfter = dnrx0.mapMultiply(1/boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tAfter]);
+		double t = 0;
+		double tdt = 0;
+		double[] dt = null;
+		if(tBefore!=tAfter) {
+		
+			Tuple<Double,double[]>dtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<Double,Double>(boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tBefore],boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tAfter]),
+					new Tuple<Double,Double>((double)tBefore,(double)tAfter), 
+					new Tuple<double[],double[]>(boardingLinkModel.getdNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tBefore],boardingLinkModel.getdNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tAfter]),
+					new Tuple<double[],double[]>(dtBefore.getData(),dtAfter.getData()), nrx0, dnrx0.getData());
+			
+			Tuple<Double,double[]>tdtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>(alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tBefore],alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tAfter]),
+					new Tuple<Double,Double>((double)tBefore,(double)tAfter), 
+					new Tuple<double[],double[]>(new double[] {boardingLinkModel.getNrPassengerBoarddt().get(r).get(alightingLinkModel.getLink().getLink().getId())[tBefore]},new double[] {boardingLinkModel.getNrPassengerBoarddt().get(r).get(alightingLinkModel.getLink().getLink().getId())[tAfter]}),
+					new Tuple<double[],double[]>(new double[] {tBeforedt},new double[] {tAfterdt}), nrx0, new double[] {nrx0dt});
+			
+			t = dtTuple.getFirst();
+			dt = dtTuple.getSecond();
+			tdt = tdtTuple.getSecond()[0];
+		}else {
+			t = tBefore;
+			dt = dtBefore.getData();
+			tdt = tBeforedt;
+		}
+		waitTime = t-departureTime;
+		waitTimedt = tdt;
+		dWaitTime = dt;		
+		
+	}
+		
+		//Find out the tBefore and tAfter for the alighting
+		int tBefore = timeStepBefore;
+		int tAfter = timeStepBefore;
+		
+		for(int j = timeStepBefore;j<timePoints.length;j++) {
+			if(nrx0>=alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[j]) {
+				tBefore = j;
+				
+			}
+			if(nrx0<=alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[j]) {
+				tAfter = j;
+				break;
+			}
+		}
+		double tBeforedt = 1/alightingLinkModel.getNrPassengerAlightdt().get(r).get(boardingLinkModel.getLink().getLink().getId())[tBefore]*nrx0dt;
+		RealVector dtBefore = dnrx0.mapMultiply(1/alightingLinkModel.getNrPassengerAlightdt().get(r).get(boardingLinkModel.getLink().getLink().getId())[tBefore]);
+		
+		double tAfterdt = 1/alightingLinkModel.getNrPassengerAlightdt().get(r).get(boardingLinkModel.getLink().getLink().getId())[tAfter]*nrx0dt;
+		RealVector dtAfter = dnrx0.mapMultiply(1/alightingLinkModel.getNrPassengerAlightdt().get(r).get(boardingLinkModel.getLink().getLink().getId())[tAfter]);
+		double t = 0;
+		double tdt = 0;
+		double[] dt = null;
+		if(tBefore!=tAfter) {
+		
+			Tuple<Double,double[]>dtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<Double,Double>(alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tBefore],alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tAfter]),
+					new Tuple<Double,Double>((double)tBefore,(double)tAfter), 
+					new Tuple<double[],double[]>(alightingLinkModel.getdNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tBefore],alightingLinkModel.getdNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tAfter]),
+					new Tuple<double[],double[]>(dtBefore.getData(),dtAfter.getData()), nrx0, dnrx0.getData());
+			
+			Tuple<Double,double[]>tdtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>(alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tBefore],alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tAfter]),
+					new Tuple<Double,Double>((double)tBefore,(double)tAfter), 
+					new Tuple<double[],double[]>(new double[] {alightingLinkModel.getNrPassengerAlightdt().get(r).get(boardingLinkModel.getLink().getLink().getId())[tBefore]},new double[] {alightingLinkModel.getNrPassengerAlightdt().get(r).get(boardingLinkModel.getLink().getLink().getId())[tAfter]}),
+					new Tuple<double[],double[]>(new double[] {tBeforedt},new double[] {tAfterdt}), nrx0, new double[] {nrx0dt});
+			
+			t = dtTuple.getFirst();
+			dt = dtTuple.getSecond();
+			tdt = tdtTuple.getSecond()[0];
+		}else {
+			t = tBefore;
+			dt = dtBefore.getData();
+			tdt = tBeforedt;
+		}
+		travelTime = t-departureTime-waitTime;
+		travelTimedt = tdt-waitTimedt;
+		dTravelTime = LTMUtils.subtract(dt, dWaitTime);
+		return new Tuple<>(new TuplesOfThree<>(travelTime,travelTimedt,dTravelTime),new TuplesOfThree<>(waitTime,waitTimedt,dWaitTime));
+		
+	}
+	
 	/**
 	 * Entry 
 	 * @return

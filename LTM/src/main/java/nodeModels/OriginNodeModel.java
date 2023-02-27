@@ -139,6 +139,21 @@ public class OriginNodeModel{
 	public NetworkRoute getRoute() {
 		return r;
 	}
+	public Map<String, Tuple<Double, double[]>> getDemand() {
+		return demand;
+	}
+	public void setDemand(Map<String, Tuple<Double, double[]>> demand) {
+		this.demand = demand;
+	}
 	
+	public void reset() {
+		this.Nr = new double[this.LTMTimePoints.length];
+		this.Nrdt = new double[this.LTMTimePoints.length];
+		this.dNr = new double[this.LTMTimePoints.length][this.variables.getKeySet().size()];
+		this.Gj = new double[this.LTMTimePoints.length];
+		this.Gjdt = new double[this.LTMTimePoints.length];
+		this.dGj = new double[this.LTMTimePoints.length][this.variables.getKeySet().size()];
+			
+	}
 	
 }

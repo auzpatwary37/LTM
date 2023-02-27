@@ -42,7 +42,7 @@ public class LTMLoadableDemandV2 {
 	
 	//Info saved if created from metamodel 
 	
-	private Map<Id<AnalyticalModelRoute>,Map<String,Tuple<Double,double[]>>> demandFromMetamodel;
+	private Map<String, Map<Id<AnalyticalModelRoute>, Tuple<Double, double[]>>> demandFromMetamodel;
 	private Map<Id<AnalyticalModelRoute>,AnalyticalModelRoute> routesFromMetamodel;
 	private TransitSchedule ts;
 	private Vehicles trv;
@@ -98,8 +98,8 @@ public class LTMLoadableDemandV2 {
 	 * @param variables
 	 * @param transitScalingFactor
 	 */
-	public LTMLoadableDemandV2(Map<Id<AnalyticalModelRoute>,Map<String,Tuple<Double,double[]>>> demand,Map<Id<AnalyticalModelRoute>,AnalyticalModelRoute> routes, TransitSchedule ts, Vehicles trv,
-			Map<String,Map<Id<TransitLink>,Tuple<Double,double[]>>> transitDemand, Map<String,Map<Id<TransitLink>, TransitLink>> trLinks, Map<String,Tuple<Double,Double>>timeBean, 
+	public LTMLoadableDemandV2(Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>> demand,Map<Id<AnalyticalModelRoute>,AnalyticalModelRoute> routes, TransitSchedule ts, Vehicles trv,
+			Map<String,Map<Id<TransitLink>,Tuple<Double,double[]>>> transitDemand, Map<String,Map<Id<TransitLink>, TransitDirectLink>> trLinks, Map<String,Tuple<Double,Double>>timeBean, 
 			MapToArray<VariableDetails>variables, double transitScalingFactor) {
 		
 		this.demandFromMetamodel = demand;
@@ -123,19 +123,23 @@ public class LTMLoadableDemandV2 {
 		
 		this.demand = new HashMap<>();
 		
-		for(Entry<Id<AnalyticalModelRoute>, Map<String, Tuple<Double, double[]>>> e:this.demandFromMetamodel.entrySet()) {
-			this.demand.put((NetworkRoute)this.routesFromMetamodel.get(e.getKey()).getRoute(), e.getValue());
-			NetworkRoute r = (NetworkRoute)this.routesFromMetamodel.get(e.getKey()).getRoute();
-			this.routes.put(e.getKey().toString(), r);
-			Id<Link> startLink = r.getStartLinkId();
-			Id<Link> endLink = r.getEndLinkId();
-			if(!this.linkToRouteIncidence.containsKey(startLink))this.linkToRouteIncidence.put(startLink, new HashSet<>());
-			this.linkToRouteIncidence.get(startLink).add(r);
-			if(!this.linkToRouteIncidence.containsKey(endLink))this.linkToRouteIncidence.put(endLink, new HashSet<>());
-			this.linkToRouteIncidence.get(endLink).add(r);
-			for(Id<Link>l:r.getLinkIds()) {
-				if(!this.linkToRouteIncidence.containsKey(l))this.linkToRouteIncidence.put(l, new HashSet<>());
-				this.linkToRouteIncidence.get(l).add(r);
+		for(Entry<String, Map<Id<AnalyticalModelRoute>, Tuple<Double, double[]>>> eTime:this.demandFromMetamodel.entrySet()) {
+			for(Entry<Id<AnalyticalModelRoute>, Tuple<Double, double[]>> e:eTime.getValue().entrySet()) {
+				NetworkRoute r = (NetworkRoute)this.routesFromMetamodel.get(e.getKey());
+				if(!this.demand.containsKey(r))this.demand.put(r,new HashMap<>());
+				this.demand.get(r).put(eTime.getKey(),e.getValue());
+			
+				this.routes.put(e.getKey().toString(), r);
+				Id<Link> startLink = r.getStartLinkId();
+				Id<Link> endLink = r.getEndLinkId();
+				if(!this.linkToRouteIncidence.containsKey(startLink))this.linkToRouteIncidence.put(startLink, new HashSet<>());
+				this.linkToRouteIncidence.get(startLink).add(r);
+				if(!this.linkToRouteIncidence.containsKey(endLink))this.linkToRouteIncidence.put(endLink, new HashSet<>());
+				this.linkToRouteIncidence.get(endLink).add(r);
+				for(Id<Link>l:r.getLinkIds()) {
+					if(!this.linkToRouteIncidence.containsKey(l))this.linkToRouteIncidence.put(l, new HashSet<>());
+					this.linkToRouteIncidence.get(l).add(r);
+			}
 			}
 		}
 		

@@ -73,4 +73,6 @@ public interface NodeModel {
 	 */
 	public void addDestinationNode(DestinationNodeModel node);
 	
+	public void reset();
+	
 }

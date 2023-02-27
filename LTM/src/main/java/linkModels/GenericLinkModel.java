@@ -315,6 +315,29 @@ public class GenericLinkModel implements LinkModel{
 		return variables;
 	}
 
+	@Override
+	public void reset() {
+		Nrx0 = new double[routes.getKeySet().size()][T];
+		Nrx0dt = new double[routes.getKeySet().size()][T];
+		Nrxl = new double[routes.getKeySet().size()][T];
+		Nrxldt = new double[routes.getKeySet().size()][T];
+		Nx0 = new double[T];
+		Nx0dt = new double[T];
+		Nxl = new double[T];
+		Nxldt = new double[T];
+		k = new double[T];
+		S = new double[T];
+		Sdt = new double[T];
+		R = new double[T];
+		Rdt = new double[T];
+		this.dNx0 = new double[this.T][this.variables.getKeySet().size()];
+		this.dNxl = new double[this.T][this.variables.getKeySet().size()];
+		this.dNrx0 = new double[routes.getKeySet().size()][T][this.variables.getKeySet().size()];
+		this.dNrxl = new double[routes.getKeySet().size()][T][this.variables.getKeySet().size()];
+		this.dS = new double[T][this.variables.getKeySet().size()];
+		this.dR = new double[T][this.variables.getKeySet().size()];
+	}
+
 //	@Override
 //	public Tuple<Map<NetworkRoute, Double>,Map<NetworkRoute,double[]>> getNrxl(int timeIndex) {
 //		Map<NetworkRoute,Double> flow = new HashMap<>();

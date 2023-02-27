@@ -18,6 +18,7 @@ import org.matsim.core.utils.collections.Tuple;
 
 import linkModels.GenericLinkModel;
 import linkModels.LinkModel;
+import ust.hk.praisehk.metamodelcalibration.matsimIntegration.SignalFlowReductionGenerator;
 import utils.LTMUtils;
 import utils.MapToArray;
 import utils.TuplesOfThree;
@@ -63,14 +64,16 @@ public class GenericNodeModel implements NodeModel{
 	private Map<Id<Link>,Map<Id<Link>,double[]>> G_ijdt = new HashMap<>();
 	private Map<Id<Link>,Map<Id<Link>,double[][]>>dG_ij = new HashMap<>();
 	
+	SignalFlowReductionGenerator sg = null;
+	
 	
 	private Map<NetworkRoute,OriginNodeModel> originNodeModels = new HashMap<>();
 	
 	private Map<NetworkRoute,DestinationNodeModel> destinationNodeModels = new HashMap<>();
 	
-	public GenericNodeModel(Node node, Map<Id<Link>,LinkModel>linkModels) {
+	public GenericNodeModel(Node node, Map<Id<Link>,LinkModel>linkModels, SignalFlowReductionGenerator  sg) {
 		
-	
+		this.sg = sg;
 		this.node = node;
 		node.getInLinks().entrySet().forEach(le->{
 			if(!linkModels.containsKey(le.getKey())) linkModels.put(le.getKey(), new GenericLinkModel(le.getValue()));
@@ -90,7 +93,7 @@ public class GenericNodeModel implements NodeModel{
 	}
 
 	public void setOptimizationVariables(MapToArray<VariableDetails> variables) {
-		
+		this.variables = variables;
 	}
 
 
@@ -177,7 +180,10 @@ public class GenericNodeModel implements NodeModel{
 				//For now lets assume the turning capacity is 1800, i.e, the same
 				double cap = 1800;//this can be inserted somehow, but from MATSim alone, I do not think so. 
 				double gbyc = 1;//this can be extracted from matsim HK.
-				sumgbyctimesqmij.compute(j.getLink().getId(), (kk,v)->v==null?gbyc*cap:v+gbyc*cap);
+				
+				if(sg!=null)gbyc = sg.getGCratio(i.getLink(), j.getLink().getId())[0];
+				double gc = gbyc;
+				sumgbyctimesqmij.compute(j.getLink().getId(), (kk,v)->v==null?gc*cap:v+gc*cap);
 
 			}
 		}
@@ -751,6 +757,32 @@ public class GenericNodeModel implements NodeModel{
 	public void addDestinationNode(DestinationNodeModel node) {
 		this.destinationNodeModels.put(node.getRoute(), node);
 		this.outLinkModels.put(node.getInLinkModel().getLink().getId(), node.getInLinkModel());
+	}
+	@Override
+	public void reset() {
+		this.dturn.clear();
+		this.turn.clear();
+		this.turndt.clear();
+		
+		this.turnRatio.clear();
+		this.dturnRatio.clear();
+		this.turnRatiodt.clear();
+		
+		this.S_i.clear();
+		this.S_idt.clear();
+		this.dS_i.clear();
+		
+		this.S_ij.clear();
+		this.dS_ij.clear();
+		this.S_ijdt.clear();
+		
+		this.R_j.clear();
+		this.R_jdt.clear();
+		this.dR_j.clear();
+		
+		this.G_ij.clear();
+		this.dG_ij.clear();
+		this.G_ijdt.clear();
 	}
 	
 }
