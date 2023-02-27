@@ -59,7 +59,7 @@ public class RunScenario {
 				m.putVolume(s, 0);
 			}
 		});
-		new MeasurementsWriter(mm).write("outputSiouxFalls/siouxFallsEmptyLinkVolumes.xml");
+		new MeasurementsWriter(mm).write("siouxFallsEmptyLinkVolumes.xml");
 		
 		Controler controler = new Controler(scenario);
 		controler.addOverridingModule(new AbstractModule() {
@@ -74,6 +74,6 @@ public class RunScenario {
 		});
 		controler.run();
 		
-		new MeasurementsWriter(mm).write("soutputSiouxFalls/siouxFallsSimulatedLinkVolumes.xml");
+		new MeasurementsWriter(mm).write("siouxFallsSimulatedLinkVolumes.xml");
 	}
 }
