@@ -81,14 +81,14 @@ private Network network;
 private TransitSchedule ts;
 private Config config;
 private Scenario scenario;
-private Population population;
+
 
 protected Map<String,FareCalculator> fareCalculator=new HashMap<>();
 
 //Used Containers
-private Map<String,ArrayList<Double>> beta=new ConcurrentHashMap<>(); //This is related to weighted MSA of the SUE
-private Map<String,ArrayList<Double>> error=new ConcurrentHashMap<>();
-private Map<String,ArrayList<Double>> error1=new ConcurrentHashMap<>();//This is related to weighted MSA of the SUE
+private List<Double> beta = new ArrayList<>(); //This is related to weighted MSA of the SUE
+private List<Double> error = new ArrayList<>();
+private List<Double> error1 = new ArrayList<>();//This is related to weighted MSA of the SUE
 
 //TimebeanId vs demands map
 private Map<String,Map<Id<AnalyticalModelODpair>,Double>> Demand=new HashMap<>();//Holds ODpair based demand
@@ -134,18 +134,12 @@ private Map<String,Map<Id<TransitLink>, List<Id<AnalyticalModelTransitRoute>>>> 
 private Map<String,Map<String,List<Id<AnalyticalModelTransitRoute>>>> fareLinkincidenceMatrix = new HashMap<>();
 private MapToArray<String> gradientKeys;
 
-private Map<String, Map<Id<AnalyticalModelRoute>,Tuple<Double, double[]>>> routeTravelTime = new HashMap<>();
-private Map<String,Map<Id<AnalyticalModelTransitRoute>,Tuple<Tuple<Double,double[]>,Tuple<Double,double[]>>>> trRouteTravelAndWaitingTime = new HashMap<>();
-
 
 private Map<String,Map<Id<AnalyticalModelRoute>,double[]>> routeFlowGradient = new HashMap<>();
 private Map<String,Map<Id<AnalyticalModelTransitRoute>,double[]>> trRouteFlowGradient = new HashMap<>();
 
 private Map<String,Map<String,double[]>> fareLinkGradient = new HashMap<>();
 
-
-private Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>> routeFlowUpdate = new HashMap<>();
-private Map<String,Map<Id<AnalyticalModelTransitRoute>,Tuple<Double,double[]>>> trRouteFlowUpdate = new HashMap<>();
 
 private Map<String,Map<Id<AnalyticalModelODpair>,double[]>>odParameterIncidence = new HashMap<>();
 private Map<String,Boolean> ifODParameterIncidence = new HashMap<>();
@@ -251,9 +245,9 @@ public ODDifferentiableLTMModel(Map<String, Tuple<Double, Double>> timeBean,Conf
 		this.trRoutes.put(timeId, new ConcurrentHashMap<>());
 		
 		
-		this.error.put(timeId, new ArrayList<>());
-		this.beta.put(timeId, new ArrayList<>());
-		this.error1.put(timeId, new ArrayList<>());
+		this.error = new ArrayList<>();
+		this.beta = new ArrayList<>();
+		this.error1 = new ArrayList<>();
 		
 	}
 	if(config==null) config = ConfigUtils.createConfig();
@@ -301,7 +295,6 @@ public void generateRoutesAndOD(Population population,Network network,Network od
 		Scenario scenario,Map<String,FareCalculator> fareCalculator) {
 	this.scenario = scenario;
 	this.config = scenario.getConfig();
-	this.population = population;
 	this.network = network;
 	
 	//System.out.println("");
@@ -571,10 +564,18 @@ private Measurements performAssignment(LinkedHashMap<String,Double> params, Link
 	return measurementsToUpdate;
 }
 
+/**
+ * For now this function, specially the calcGrad will not work. The gradient will be calculated irrespective of the input
+ * @param params
+ * @param anaParams
+ * @param originalMeasurements
+ * @param calcGrad (does not work)
+ * @return
+ */
 private Measurements performAssignment(LinkedHashMap<String,Double> params, LinkedHashMap<String,Double> anaParams, Measurements originalMeasurements,boolean calcGrad) {
 	Measurements measurementsToUpdate = null;
 	
-	SUEModelOutput flow = this.performAssignment(params, anaParams,calcGrad);
+	SUEModelOutput flow = this.performAssignment(params, anaParams);
 	this.flow = flow;
 	if(originalMeasurements==null) {//for now we just add the fare link and link volume for a null measurements
 		this.emptyMeasurements=true;
@@ -651,32 +652,39 @@ private SUEModelOutput performAssignment( LinkedHashMap<String,Double> params, L
 		});
 		boolean ifStop = this.UpdateRouteFlow(auxflow,counter);
 		
+		if(ifStop)break;
+		
 		this.ltmDemand = new LTMLoadableDemandV2(auxflow.getFirst(), this.routes, ts, this.scenario.getTransitVehicles(), trDirectLinkDemand, this.trDirectLinks, timeBeans, variables, params.get(CNLSUEModel.CapacityMultiplierName));
 	
 	}
 	
+	Map<String,Map<String,Double>> fareLinkVolume = new HashMap<>();
+	Map<String,Map<String,double[]>> fareLinkVolumeGrad = new HashMap<>();
+	this.trRouteFlow.entrySet().forEach(e->{
+		e.getValue().entrySet().forEach(r->{
+			
+			Map<String, Set<FareLink>> fareLinkUsage = ((CNLTransitRouteLTM)this.trRoutes.get(e.getKey()).get(r.getKey())).getFareLinkUsage(this.network, timeBeans, e.getKey(), additionalDataContainer);
+			for(Entry<String,Set<FareLink>> tfl:fareLinkUsage.entrySet()) {
+				if(!fareLinkVolume.containsKey(tfl.getKey())) {
+					fareLinkVolume.put(tfl.getKey(),new HashMap<>());
+					fareLinkVolumeGrad.put(tfl.getKey(),new HashMap<>());
+				}
+				for(FareLink fl:tfl.getValue()) {
+					fareLinkVolume.get(tfl.getKey()).compute(fl.toString(), (k,v)->v==null?r.getValue():v+r.getValue());
+					fareLinkVolumeGrad.get(tfl.getKey()).compute(fl.toString(),(k,v)->v==null?this.trRouteFlowGradient.get(e.getKey()).get(r.getKey()):LTMUtils.sum(v,this.trRouteFlowGradient.get(e.getKey()).get(r.getKey())));
+				}
+			}
+		});
+	});
+	
+	
+	flow.setLinkVolumeAndGradient(this.ltm.getLTMLinkFlow(timeBeans));
+	flow.setFareLinkVolume(fareLinkVolume);
+	flow.setFareLinkVolumeGrad(fareLinkVolumeGrad);
 	
 	return flow;
 }
 
-private SUEModelOutput performAssignment( LinkedHashMap<String,Double> params, LinkedHashMap<String,Double> anaParams,boolean calcGradient) {
-	SUEModelOutput flow = new SUEModelOutput(new HashMap<>(),new HashMap<>(),new HashMap<>(),new HashMap<>(),new HashMap<>());
-	flow.setTrainCount(new HashMap<>());
-	flow.setTrainTransfers(new HashMap<>());
-	//this.resetCarDemand();
-	for(String timeId:this.timeBeans.keySet()) {
-		SUEModelOutput flowOut = this.performAssignment(params, anaParams);
-		
-		flow.getLinkVolume().putAll(flowOut.getLinkVolume());
-		flow.getLinkTravelTime().putAll(flowOut.getLinkTravelTime());
-		flow.getLinkTransitVolume().putAll(flowOut.getLinkTransitVolume());
-		flow.getTrLinkTravelTime().putAll(flowOut.getTrLinkTravelTime());
-		flow.getFareLinkVolume().putAll(flowOut.getFareLinkVolume());
-		flow.getTrainCount().putAll(flowOut.getTrainCount());
-		flow.getTrainTransfers().putAll(flowOut.getTrainTransfers());
-	}
-	return flow;
-}
 
 
 
@@ -785,6 +793,7 @@ protected Tuple<Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>>
 				double[] probGrad = MatrixUtils.createRealVector(du).subtract(emuGrad).mapMultiply(this.routeProb.get(timeBeanId).get(r.getRouteId())).toArray();
 				this.routeProbGrad.get(timeBeanId).put(r.getRouteId(), probGrad);
 			}
+			emuGrad = MatrixUtils.createRealVector(emuGrad).mapDivide(anaParams.get(CNLSUEModel.LinkMiuName)).getData();
 
 			//__________start tr utility______________
 
@@ -850,6 +859,7 @@ protected Tuple<Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>>
 				double[] probGrad = MatrixUtils.createRealVector(du).subtract(emuTrGrad).mapMultiply(this.trRouteProb.get(timeBeanId).get(r.getTrRouteId())).toArray();
 				this.trRouteProbGrad.get(timeBeanId).put(r.getTrRouteId(), probGrad);
 			}
+			emuTrGrad = MatrixUtils.createRealVector(emuTrGrad).mapDivide(anaParams.get(CNLSUEModel.LinkMiuName)).getData();
 
 			//____________________Mode Choice _______________________
 			double modeMiu=anaParams.get(CNLSUEModel.ModeMiuName);
@@ -960,10 +970,136 @@ public void setConfig(Config config) {
 
 protected boolean UpdateRouteFlow(Tuple<Map<String, Map<Id<AnalyticalModelRoute>, Tuple<Double, double[]>>>, Map<String, Map<Id<AnalyticalModelTransitRoute>, Tuple<Double, double[]>>>> auxflow ,int counter){
 	
+	Map<String,Map<Id<AnalyticalModelRoute>,Double>> routeFlowUpdate = new HashMap<>();
+	Map<String,Map<Id<AnalyticalModelRoute>,double[]>> routeFlowUpdateGrad = new HashMap<>();
 	
 	
+	Map<String,Map<Id<AnalyticalModelTransitRoute>,Double>> trRouteFlowUpdate = new HashMap<>();
+	Map<String,Map<Id<AnalyticalModelTransitRoute>,double[]>> trRouteFlowUpdateGrad = new HashMap<>();
 	
-	return false;
+	
+	double linkAbove1=0;
+	double squareSum=0;
+	double sum=0;
+	double error=0;
+	
+	
+	for(String t:this.timeBeans.keySet()){
+		routeFlowUpdate.put(t, new HashMap<>());
+		routeFlowUpdateGrad.put(t, new HashMap<>());
+		
+		trRouteFlowUpdate.put(t, new HashMap<>());
+		trRouteFlowUpdateGrad.put(t, new HashMap<>());
+		
+		
+
+		for(Entry<Id<AnalyticalModelRoute>, Tuple<Double, double[]>> r:auxflow.getFirst().get(t).entrySet()){
+				
+				double currentVolume=0;
+				double[] currentVolumeGrad = new double[this.variables.getKeySet().size()];
+				
+				if(counter!=0) {
+					currentVolume = this.routeFlow.get(t).get(r.getKey());
+					currentVolumeGrad = this.routeFlowGradient.get(t).get(r.getKey());
+				}
+				
+				
+				double delta = r.getValue().getFirst()-currentVolume;
+				routeFlowUpdate.get(t).put(r.getKey(), delta);
+				routeFlowUpdateGrad.get(t).put(r.getKey(), LTMUtils.subtract(r.getValue().getSecond(), currentVolumeGrad));
+				error=Math.pow(delta,2);
+				
+				if(error==Double.POSITIVE_INFINITY||error==Double.NEGATIVE_INFINITY) {
+					throw new IllegalArgumentException("Error is infinity!!!");
+				}
+				if(r.getValue().getFirst() != 0 && error/(r.getValue().getFirst()+.00000001)*100>tolerance) {					
+					sum+=1;
+				}
+				if(error>1) {
+					linkAbove1++;
+				}
+			
+			squareSum+=error;
+			if(squareSum==Double.POSITIVE_INFINITY||squareSum==Double.NEGATIVE_INFINITY) {
+				throw new IllegalArgumentException("error is infinity!!!");
+			}
+		}
+		for(Entry<Id<AnalyticalModelTransitRoute>, Tuple<Double, double[]>> r:auxflow.getSecond().get(t).entrySet()){
+
+			double currentVolume=0;
+			double[] currentVolumeGrad = new double[this.variables.getKeySet().size()];
+			
+			if(counter!=0) {
+				currentVolume = this.trRouteFlow.get(t).get(r.getKey());
+				currentVolumeGrad = this.trRouteFlowGradient.get(t).get(r.getKey());
+			}
+			
+			
+			double delta = r.getValue().getFirst()-currentVolume;
+			trRouteFlowUpdate.get(t).put(r.getKey(), delta);
+			trRouteFlowUpdateGrad.get(t).put(r.getKey(), LTMUtils.subtract(r.getValue().getSecond(), currentVolumeGrad));
+			
+			error=Math.pow(delta,2);
+			
+			
+			if(r.getValue().getFirst() != 0 && error/(r.getValue().getFirst()+.00000001)*100>tolerance) {					
+				sum+=1;
+			}
+			if(error>1) {
+				linkAbove1++;
+			}
+			//}
+			if(error==Double.NaN||error==Double.NEGATIVE_INFINITY) {
+				throw new IllegalArgumentException("Stop!!! There is something wrong!!!");
+			}
+			squareSum+=error;
+		}
+	}
+	
+	if(squareSum==Double.NaN) {
+		System.out.println("WAIT!!!!Problem!!!!!");
+	}
+	squareSum=Math.sqrt(squareSum);
+	if(counter==0) {
+		this.error = new ArrayList<>();
+		this.error1 = new ArrayList<>();
+	}
+	this.error.add(squareSum);
+	logger.info("ERROR amount at SUE iteration "+counter+" = "+squareSum);
+
+	if(counter==0) {
+		this.beta = new ArrayList<>();
+		this.beta.add(1.);
+	}else {
+		if(this.error.get(counter)<this.error.get(counter-1)) {
+			beta.add(beta.get(counter-1)+this.gammaMSA);
+		}else {
+			this.consecutiveSUEErrorIncrease+=1;
+			beta.add(beta.get(counter-1)+this.alphaMSA);
+		}
+	}
+	double alpha=1/beta.get(counter);
+	
+	for(Entry<String, Map<Id<AnalyticalModelRoute>, Double>> t:routeFlowUpdate.entrySet()) {
+		for(Entry<Id<AnalyticalModelRoute>, Double> r:t.getValue().entrySet()) {
+			this.routeFlow.get(t.getKey()).compute(r.getKey(), (k,v)->v==null?r.getValue()*1/alpha:v+r.getValue()*1/alpha);
+			this.routeFlowGradient.get(t.getKey()).compute(r.getKey(), (k,v)->v==null?MatrixUtils.createRealVector(routeFlowUpdateGrad.get(t.getKey()).get(r.getKey())).mapMultiply(1/alpha).toArray():
+				MatrixUtils.createRealVector(routeFlowUpdateGrad.get(t.getKey()).get(r.getKey())).mapMultiply(1/alpha).add(v).toArray());
+		}
+	}
+	for(Entry<String, Map<Id<AnalyticalModelTransitRoute>, Double>> t:trRouteFlowUpdate.entrySet()) {
+		for(Entry<Id<AnalyticalModelTransitRoute>, Double> r:t.getValue().entrySet()) {
+			this.trRouteFlow.get(t.getKey()).compute(r.getKey(), (k,v)->v==null?r.getValue()*1/alpha:v+r.getValue()*1/alpha);
+			this.trRouteFlowGradient.get(t.getKey()).compute(r.getKey(), (k,v)->v==null?MatrixUtils.createRealVector(trRouteFlowUpdateGrad.get(t.getKey()).get(r.getKey())).mapMultiply(1/alpha).toArray():
+				MatrixUtils.createRealVector(trRouteFlowUpdateGrad.get(t.getKey()).get(r.getKey())).mapMultiply(1/alpha).add(v).toArray());
+		}
+	}
+	
+	if (squareSum<=1||sum==0||linkAbove1==0){
+		return true;
+	}else{
+		return false;
+	}
 }
 
 

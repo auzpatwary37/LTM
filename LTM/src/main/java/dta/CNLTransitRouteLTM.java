@@ -20,7 +20,7 @@ import org.matsim.pt.transitSchedule.api.TransitRoute;
 import org.matsim.pt.transitSchedule.api.TransitSchedule;
 
 import dynamicTransitRouter.fareCalculators.FareCalculator;
-import ust.hk.praisehk.metamodelcalibration.analyticalModel.AnalyticalModelNetwork;
+import transitFareAndHandler.FareLink;
 import ust.hk.praisehk.metamodelcalibration.analyticalModel.TransitDirectLink;
 import ust.hk.praisehk.metamodelcalibration.analyticalModel.TransitLink;
 import ust.hk.praisehk.metamodelcalibration.analyticalModelImpl.CNLSUEModel;
@@ -134,6 +134,39 @@ public class CNLTransitRouteLTM extends CNLTransitRoute{
 			String timeBeanId = this.getTimeId(time, timeBean);
 			if(!links.containsKey(timeBeanId))links.put(timeBeanId, new HashSet<>());
 			links.get(timeBeanId).add(tdl);
+			NetworkRoute r = tdl.getTs().getTransitLines().get(Id.create(tdl.getLineId(), TransitLine.class)).getRoutes().get(Id.create(tdl.getRouteId(), TransitRoute.class)).getRoute();
+			if(trTravelAndWaitTime!=null) {
+				Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>> tw = trTravelAndWaitTime.get(r).get(timeBeanId).get(tdl.getStartingLinkId().toString()+"___"+tdl.getEndingLinkId().toString());
+				time+=tw.getFirst().getFirst();
+				time+=tw.getSecond().getFirst();
+			}else {
+				time+=this.getFreeFlowTravelTime(tdl, network);
+			}
+			
+		}
+		
+		return links;
+	}
+	
+	public Map<String,Set<FareLink>> getFareLinkUsage(Network network, Map<String,Tuple<Double,Double>>timeBean, String departingTimeId,Map<String, Object> additionalDataContainer){
+		Map<String,Set<FareLink>> links = new HashMap<>();
+		double time = timeBean.get(departingTimeId).getFirst()+Math.random()*(timeBean.get(departingTimeId).getSecond()-timeBean.get(departingTimeId).getFirst());
+		Map<NetworkRoute, Map<String, Map<String, Tuple<Tuple<Double, double[]>,Tuple<Double, double[]>>>>> trTravelAndWaitTime = (Map<NetworkRoute, Map<String, Map<String, Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>>>>>) additionalDataContainer.get("transit");
+		Map<Id<TransitLink>,FareLink> startingLinkMap = new HashMap<>();
+		
+		for(FareLink l:this.getFareLinks()) {
+			for(TransitDirectLink tdl:this.getTransitDirectLinks()) {
+				if(tdl.getStartStopId().equals(l.getBoardingStopFacility().toString())) {
+					startingLinkMap.put(tdl.getTrLinkId(),l);
+					break;
+				}
+			}
+		}
+		for(TransitDirectLink tdl:this.getTransitDirectLinks()) {
+			String timeBeanId = this.getTimeId(time, timeBean);
+			
+			if(!links.containsKey(timeBeanId) && startingLinkMap.containsKey(tdl.getTrLinkId()))links.put(timeBeanId, new HashSet<>());
+			if(startingLinkMap.containsKey(tdl.getTrLinkId()))links.get(timeBeanId).add(startingLinkMap.get(tdl.getTrLinkId()));
 			NetworkRoute r = tdl.getTs().getTransitLines().get(Id.create(tdl.getLineId(), TransitLine.class)).getRoutes().get(Id.create(tdl.getRouteId(), TransitRoute.class)).getRoute();
 			if(trTravelAndWaitTime!=null) {
 				Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>> tw = trTravelAndWaitTime.get(r).get(timeBeanId).get(tdl.getStartingLinkId().toString()+"___"+tdl.getEndingLinkId().toString());
