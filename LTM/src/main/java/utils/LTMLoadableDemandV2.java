@@ -31,9 +31,9 @@ public class LTMLoadableDemandV2 {
 	private Map<String,NetworkRoute> routes = new HashMap<>();
 	private Map<String,NetworkRoute> trvRoutes = new HashMap<>();
 	private Map<NetworkRoute, Map<String,Tuple<Double,double[]>>> demand;
-	private Map<NetworkRoute, Map<String,Tuple<Double,double[]>>> trvDemand;
+	private Map<NetworkRoute, Map<String,Tuple<Double,double[]>>> trvDemand =new HashMap<>();
 	private Map<String,Tuple<Double,Double>> demandTimeBean;
-	private Map<NetworkRoute,Map<String,Map<Tuple<Id<Link>,Id<Link>>,Tuple<Double,double[]>>>> transitTravelTimeQuery;
+	private Map<NetworkRoute,Map<String,Map<Tuple<Id<Link>,Id<Link>>,Tuple<Double,double[]>>>> transitTravelTimeQuery = new HashMap<>();
 	
 	private Map<Id<Link>,Set<NetworkRoute>> linkToRouteIncidence = new HashMap<>();
 	private Map<Id<Link>,Set<NetworkRoute>> linkToTrvRouteIncidence = new HashMap<>();
@@ -111,7 +111,7 @@ public class LTMLoadableDemandV2 {
 		trLinks.entrySet().forEach(t->{
 			this.trDirectLinksFromMetamodel.put(t.getKey(), new HashMap<>());
 			t.getValue().entrySet().forEach(trl->{
-				if(trl instanceof TransitDirectLink) {
+				if(trl.getValue() instanceof TransitDirectLink) {
 					this.trDirectLinksFromMetamodel.get(t.getKey()).put(trl.getKey(), (TransitDirectLink)trl.getValue());
 				}
 			});
@@ -125,7 +125,7 @@ public class LTMLoadableDemandV2 {
 		
 		for(Entry<String, Map<Id<AnalyticalModelRoute>, Tuple<Double, double[]>>> eTime:this.demandFromMetamodel.entrySet()) {
 			for(Entry<Id<AnalyticalModelRoute>, Tuple<Double, double[]>> e:eTime.getValue().entrySet()) {
-				NetworkRoute r = (NetworkRoute)this.routesFromMetamodel.get(e.getKey());
+				NetworkRoute r = (NetworkRoute)this.routesFromMetamodel.get(e.getKey()).getRoute();
 				if(!this.demand.containsKey(r))this.demand.put(r,new HashMap<>());
 				this.demand.get(r).put(eTime.getKey(),e.getValue());
 			

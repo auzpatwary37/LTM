@@ -21,11 +21,16 @@ import org.matsim.pt.transitSchedule.api.TransitSchedule;
 
 import dynamicTransitRouter.fareCalculators.FareCalculator;
 import transitFareAndHandler.FareLink;
+import ust.hk.praisehk.metamodelcalibration.analyticalModel.AnalyticalModelTransitRoute;
 import ust.hk.praisehk.metamodelcalibration.analyticalModel.TransitDirectLink;
 import ust.hk.praisehk.metamodelcalibration.analyticalModel.TransitLink;
+import ust.hk.praisehk.metamodelcalibration.analyticalModel.TransitTransferLink;
 import ust.hk.praisehk.metamodelcalibration.analyticalModelImpl.CNLSUEModel;
+import ust.hk.praisehk.metamodelcalibration.analyticalModelImpl.CNLTransitDirectLink;
 import ust.hk.praisehk.metamodelcalibration.analyticalModelImpl.CNLTransitRoute;
+import ust.hk.praisehk.metamodelcalibration.analyticalModelImpl.CNLTransitTransferLink;
 import utils.LTMUtils;
+import utils.MapToArray;
 
 
 public class CNLTransitRouteLTM extends CNLTransitRoute{
@@ -43,9 +48,18 @@ public class CNLTransitRouteLTM extends CNLTransitRoute{
 	
 	
 	
+	public CNLTransitRouteLTM(ArrayList<CNLTransitTransferLink> transferLinks, ArrayList<CNLTransitDirectLink> dlinks,
+			Scenario scenario, TransitSchedule transitSchedule, double routeWalkingDistance, String routeId) {
+		super(transferLinks,dlinks,scenario,transitSchedule,routeWalkingDistance,routeId);
+	}
+
+
+
+
+
 	public Tuple<Double,double[]> calcRouteUtility(LinkedHashMap<String, Double> params,LinkedHashMap<String, Double> anaParams,Network network,Map<Id<TransitLink>,TransitLink>transitLinks,Map<String,FareCalculator>farecalc,Map<String,Object> additionalDataContainer,
 			Tuple<Double,Double> timeBean, String timeBeanId) {
-		
+		MapToArray<String> gradientKeys = (MapToArray<String>) additionalDataContainer.get("variableKeys");
 		double MUTravelTime=params.get(CNLSUEModel.MarginalUtilityofTravelptName)/3600.0-params.get(CNLSUEModel.MarginalUtilityofPerformName)/3600.0;
 		double MUDistance=params.get(CNLSUEModel.MarginalUtilityOfDistancePtName);
 		double MUWalkTime=params.get(CNLSUEModel.MarginalUtilityOfWalkingName)/3600.0-params.get(CNLSUEModel.MarginalUtilityofPerformName)/3600.0;
@@ -57,8 +71,8 @@ public class CNLTransitRouteLTM extends CNLTransitRoute{
 		//Tuple<Tuple<Double,RealVector>,Tuple<Double,RealVector>> trTravelAndWaitTime;
 		double travelTime = 0;
 		double waitingTime = 0;
-		double[] ttGrad = null;
-		double[] twGrad = null;
+		double[] ttGrad = new double[gradientKeys.getKeySet().size()];
+		double[] twGrad = new double[gradientKeys.getKeySet().size()];
 		Map<NetworkRoute, Map<String, Map<String, Tuple<Tuple<Double, double[]>,Tuple<Double, double[]>>>>> trTravelAndWaitTime = (Map<NetworkRoute, Map<String, Map<String, Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>>>>>) additionalDataContainer.get("transit");
 		if(trTravelAndWaitTime==null) {
 			travelTime = this.getFreeFlowTravelTime(network);
@@ -82,7 +96,7 @@ public class CNLTransitRouteLTM extends CNLTransitRoute{
 		double distance=this.calcRouteDistance(network);
 		double utility=0;
 		double MUTransfer=params.get(CNLSUEModel.UtilityOfLineSwitchName);
-		double[] utilityGrad = new double[ttGrad.length];
+		double[] utilityGrad = new double[gradientKeys.getKeySet().size()];
 		
 		
 		
@@ -189,5 +203,25 @@ public class CNLTransitRouteLTM extends CNLTransitRoute{
 			}
 		}
 		return d;
+	}
+	
+	@Override
+	public AnalyticalModelTransitRoute cloneRoute() {
+		ArrayList<CNLTransitDirectLink> dlinks=new ArrayList<>();
+		ArrayList<CNLTransitTransferLink> transferLinks=new ArrayList<>();
+		int i=0;
+		for(TransitTransferLink tl:this.getTransitTransferLinks()) {
+			CNLTransitTransferLink ctl = (CNLTransitTransferLink)tl;
+			if(ctl.getNextdLink()!=null) {
+			dlinks.add(ctl.getNextdLink().cloneLink(ctl.getNextdLink()));
+			transferLinks.add(ctl.cloneLink(ctl, dlinks.get(i)));
+			}else {
+				transferLinks.add(ctl.cloneLink(ctl, null));
+			}
+			i++;
+		}
+		CNLTransitRouteLTM trRoute=new CNLTransitRouteLTM(transferLinks,dlinks,this.scenario,this.transitSchedule,this.routeWalkingDistance,this.trRouteId.toString());
+		trRoute.setPlanElements(this.planElements);
+		return trRoute ; 
 	}
 }

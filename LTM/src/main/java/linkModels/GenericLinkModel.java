@@ -98,7 +98,7 @@ public class GenericLinkModel implements LinkModel{
 	@Override
 	public int getTimeIndex(double t) {
 		for(int i = 0; i<timePoints.length;i++) {
-			if(t>=timePoints[i])return i;
+			if(t>=timePoints[i])return i-1;
 		}
 		return 0;
 	}
@@ -393,7 +393,7 @@ class FD{
 	}
 	
 	public FD(Link link) {
-		this(link.getLength(),link.getFreespeed(),link.getFlowCapacityPerSec(),0.15);// K_j = 0.15 is assuming a jam density of 250 veh/mile
+		this(link.getLength(),link.getFreespeed(),link.getCapacity()/3600,0.15);// K_j = 0.15 is assuming a jam density of 250 veh/mile
 	}
 	
 }

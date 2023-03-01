@@ -1,0 +1,241 @@
+{
+  "dummyCompressedMap": {
+    "7022-2 TO: Sai Wan Ho Ferry Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 9.0
+    },
+    "7003-1 TO: Sok Kwu Wan Pier": {
+      "DummyIsSingleFareR": false,
+      "DummySingleFareR": 0.0,
+      "DummyStopsMap": {
+        "ferry_101125": {
+          "isSingleFareS": true,
+          "singleFareS": 12.0,
+          "minFare": 12.0,
+          "seqList": [
+            1
+          ]
+        },
+        "ferry_101323": {
+          "isSingleFareS": true,
+          "singleFareS": 4.6,
+          "minFare": 4.6,
+          "seqList": [
+            2
+          ]
+        },
+        "ferry_101124": {
+          "isSingleFareS": true,
+          "singleFareS": 1.7976931348623157E308,
+          "minFare": 1.7976931348623157E308,
+          "seqList": [
+            3
+          ]
+        }
+      }
+    },
+    "7009-1 TO: Yung Shue Wan Ferry Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 17.8
+    },
+    "7031-1 TO: Wan Chai Ferry Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 2.7
+    },
+    "7007-1 TO: Peng Chau Ferry Pier|Peng Chau Public Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 15.9
+    },
+    "7056-1 TO: Kwun Tong Ferry Pier|Kwun Tong Public Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 6.0
+    },
+    "7004-2 TO: Aberdeen Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 17.5
+    },
+    "7051-1 TO: Pontoon at Ap Lei Chau (outside Marina Habitat)": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 2.2
+    },
+    "7054-2 TO: Aberdeen Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 30.0
+    },
+    "7001-1 TO: Po Toi, Tai Wan": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 25.0
+    },
+    "7020-1 TO: Kowloon City Ferry Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 7.5
+    },
+    "7054-1 TO: Cheung Chau Public Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 30.0
+    },
+    "7019-2 TO: North Point (West) Ferry Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 7.5
+    },
+    "7021-2 TO: North Point (East) Ferry Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 6.0
+    },
+    "7008-2 TO: Central Pier No. 4": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 22.0
+    },
+    "7030-2 TO: Star Ferry Pier (Tsim Sha Tsui)": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 2.7
+    },
+    "7031-2 TO: Star Ferry Pier (Tsim Sha Tsui)": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 2.7
+    },
+    "7023-2 TO: Sai Wan Ho Ferry Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 9.0
+    },
+    "7017-2 TO: Ma Wan Ferry Pier|Park Island": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 27.0
+    },
+    "7006-1 TO: Mui Wo Ferry Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 15.9
+    },
+    "7005-1 TO: Cheung Chau Ferry Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 13.6
+    },
+    "7021-1 TO: Kwun Tong Ferry Pier|Kwun Tong Public Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 6.0
+    },
+    "7009-2 TO: Central Pier No. 4": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 17.8
+    },
+    "7020-2 TO: North Point (West) Ferry Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 7.5
+    },
+    "7028-1 TO: Mo Tat Wan Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 16.5
+    },
+    "7017-1 TO: Central Pier No. 2": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 27.0
+    },
+    "7010-1 TO: Discovery Bay Ferry Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 46.0
+    },
+    "7022-1 TO: Kwun Tong Ferry Pier|Kwun Tong Public Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 9.0
+    },
+    "7003-2 TO: Aberdeen Pier": {
+      "DummyIsSingleFareR": false,
+      "DummySingleFareR": 0.0,
+      "DummyStopsMap": {
+        "ferry_101323": {
+          "isSingleFareS": true,
+          "singleFareS": 12.0,
+          "minFare": 12.0,
+          "seqList": [
+            2
+          ]
+        },
+        "ferry_101125": {
+          "isSingleFareS": true,
+          "singleFareS": 1.7976931348623157E308,
+          "minFare": 1.7976931348623157E308,
+          "seqList": [
+            3
+          ]
+        },
+        "ferry_101124": {
+          "isSingleFareS": false,
+          "singleFareS": 0.0,
+          "minFare": 4.6,
+          "seqList": [
+            1
+          ]
+        }
+      },
+      "DummyFareSeqMap": {
+        "1": {
+          "2": 4.6,
+          "3": 12.0
+        },
+        "2": {
+          "3": 12.0
+        }
+      }
+    },
+    "7005-2 TO: Central Pier No. 5": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 13.6
+    },
+    "7004-1 TO: Yung Shue Wan Ferry Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 17.5
+    },
+    "7052-1 TO: Pontoon at Ap Lei Chau (outside Marina Habitat)": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 2.2
+    },
+    "7028-2 TO: Aberdeen Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 16.5
+    },
+    "7023-1 TO: Sam Ka Tsuen Ferry Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 9.0
+    },
+    "7051-2 TO: Aberdeen (Landing step outside Aberdeen Promenade)": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 2.2
+    },
+    "7052-2 TO: Stationary vessel outside Aberdeen Wholesale Fish Market": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 2.2
+    },
+    "7001-2 TO: Aberdeen Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 25.0
+    },
+    "7007-2 TO: Central Pier No. 6": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 15.9
+    },
+    "7008-1 TO: Sok Kwu Wan Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 22.0
+    },
+    "7010-2 TO: Central Pier No. 3": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 46.0
+    },
+    "7006-2 TO: Central Pier No. 6": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 15.9
+    },
+    "7019-1 TO: Hung Hom (North) Ferry Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 7.5
+    },
+    "7056-2 TO: North Point (East) Ferry Pier": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 6.0
+    },
+    "7030-1 TO: Central Pier No. 7": {
+      "DummyIsSingleFareR": true,
+      "DummySingleFareR": 2.7
+    }
+  }
+}

@@ -2,6 +2,7 @@ package ltmAlgorithm;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -74,14 +75,14 @@ public class LTM implements DNL{
 	public void performLTM(LTMLoadableDemandV2 demand, MapToArray<VariableDetails> variables) {
 		this.demand = demand;
 		this.variables = variables;
-		Map<Id<Link>,List<NetworkRoute>> totalInc = new HashMap<>();
+		Map<Id<Link>,Set<NetworkRoute>> totalInc = new HashMap<>();
 		demand.getLinkToRouteIncidence().entrySet().forEach(e->{
-			totalInc.put(e.getKey(), new ArrayList<>(e.getValue()));
+			totalInc.put(e.getKey(), new HashSet<>(e.getValue()));
 		});
 		demand.getLinkToTrvRouteIncidence().entrySet().forEach(e->totalInc.compute(e.getKey(), 
 				(k,v)->{
 					if(v==null) {
-						List<NetworkRoute> rs = new ArrayList<>();
+						Set<NetworkRoute> rs = new HashSet<>();
 						rs.addAll(e.getValue());
 						return rs;
 					}
@@ -93,10 +94,13 @@ public class LTM implements DNL{
 		totalInc.entrySet().forEach(e->{
 			List<NetworkRoute> routes = new ArrayList<>();
 			routes.addAll(e.getValue());
+			Set<String> a = new HashSet<>();
+			routes.forEach(r->a.add(getRouteId(r)));
 			this.linkModels.get(e.getKey()).setLTMTimeBeanAndRouteSet(timePoints, new MapToArray<NetworkRoute>("routes for link "+e.getKey(),e.getValue()));
 			if(variables!=null)this.linkModels.get(e.getKey()).setOptimizationVariables(variables);
+			System.out.println("Finished link "+e.getKey()+" total memory consumption = "+Long.toString(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
 		});
-		
+		for(NodeModel n:this.nodeModels.values())n.setTimeStepAndRoutes(timePoints, null);
 		demand.getDemand().entrySet().forEach(e->{
 			this.routeODModels.put(e.getKey(), new Tuple<OriginNodeModel,DestinationNodeModel>(new OriginNodeModel(e.getKey(),
 					this.nodeModels.get(network.getLinks().get(e.getKey().getStartLinkId()).getFromNode().getId()),demand.getDemandTimeBean(),e.getValue(),this.timePoints,variables)
@@ -113,6 +117,14 @@ public class LTM implements DNL{
 		});
 		this.runLTMSimulation();
 		this.simulateTransit();
+	}
+	
+	public static String getRouteId(NetworkRoute r) {
+		String id = "";
+		id = id+r.getStartLinkId().toString()+"___";
+		for(Id<Link> l :r.getLinkIds())id = id+l.toString()+"___";
+		id = id+r.getEndLinkId();
+		return id;
 	}
 	
 	@Override

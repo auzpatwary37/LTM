@@ -142,7 +142,7 @@ private Map<String,Map<String,double[]>> fareLinkGradient = new HashMap<>();
 
 
 private Map<String,Map<Id<AnalyticalModelODpair>,double[]>>odParameterIncidence = new HashMap<>();
-private Map<String,Boolean> ifODParameterIncidence = new HashMap<>();
+private boolean ifODParameterIncidence = true;
 //This are needed for output generation 
 
 private double[] gradMultiplier;
@@ -224,9 +224,6 @@ public ODDifferentiableLTMModel(Map<String, Tuple<Double, Double>> timeBean,Conf
 		this.trProb.put(timeId, new ConcurrentHashMap<>());
 		this.trProbGrad.put(timeId, new ConcurrentHashMap<>());
 		
-		
-		
-		
 		this.routeFlow.put(timeId, new ConcurrentHashMap<>());
 		this.routeFlowGradient.put(timeId, new ConcurrentHashMap<>());
 		
@@ -243,7 +240,7 @@ public ODDifferentiableLTMModel(Map<String, Tuple<Double, Double>> timeBean,Conf
 		this.trDirectLinks.put(timeId, new ConcurrentHashMap<>());
 		
 		this.trRoutes.put(timeId, new ConcurrentHashMap<>());
-		
+		this.odParameterIncidence.put(timeId, new ConcurrentHashMap<>());
 		
 		this.error = new ArrayList<>();
 		this.beta = new ArrayList<>();
@@ -627,34 +624,41 @@ private SUEModelOutput performAssignment( LinkedHashMap<String,Double> params, L
 	//this.resetCarDemand();
 	
 	for(int counter = 0;counter<this.maxIter;counter++) {
-		
+		additionalDataContainer.put("variableKeys", this.gradientKeys);
 		if(counter!=0) {
 			this.ltm.performLTM(this.ltmDemand, variables);
 			additionalDataContainer.put("car", this.ltm.getTimeBeanRouteTravelTime(3));
 			additionalDataContainer.put("transit", ltm.getTimeBeanTransitTravelAndWaitingTime(3));
+			
 		}
 	
 		Tuple<Map<String, Map<Id<AnalyticalModelRoute>, Tuple<Double, double[]>>>, Map<String, Map<Id<AnalyticalModelTransitRoute>, Tuple<Double, double[]>>>> auxflow = 
 				this.applyChoiceModel(params, anaParams, additionalDataContainer);
 		
 		Map<String,Map<Id<TransitLink>,Tuple<Double,double[]>>> trDirectLinkDemand = new HashMap<>();
-		
+		Map<String,Map<Id<TransitLink>,TransitDirectLink>> directLinks = new HashMap<>();
+		//this.trDirectLinks = new HashMap<>();
 		auxflow.getSecond().entrySet().forEach(e->{
 			for(Entry<Id<AnalyticalModelTransitRoute>, Tuple<Double, double[]>> d:e.getValue().entrySet()) {
 				Map<String, Set<TransitDirectLink>> tdlUsage = this.trRoutes.get(e.getKey()).get(d.getKey()).getDirectLinkUsage(this.network,this.timeBeans, e.getKey(), additionalDataContainer);
 				for(Entry<String, Set<TransitDirectLink>> u: tdlUsage.entrySet()) {
 					if(!trDirectLinkDemand.containsKey(u.getKey()))trDirectLinkDemand.put(u.getKey(), new HashMap<>());
+					if(!directLinks.containsKey(u.getKey()))directLinks.put(u.getKey(), new HashMap<>());
 					for(TransitDirectLink tdl:u.getValue()) {
 						trDirectLinkDemand.get(u.getKey()).compute(tdl.getTrLinkId(), (k,v)->v==null?d.getValue():new Tuple<>(v.getFirst()+d.getValue().getFirst(),LTMUtils.sum(v.getSecond(), d.getValue().getSecond())));
+						if(!directLinks.get(u.getKey()).containsKey(tdl.getTrLinkId()))directLinks.get(u.getKey()).put(tdl.getTrLinkId(), tdl);
 					}
 				}
 			}
 		});
+		
 		boolean ifStop = this.UpdateRouteFlow(auxflow,counter);
 		
 		if(ifStop)break;
-		
-		this.ltmDemand = new LTMLoadableDemandV2(auxflow.getFirst(), this.routes, ts, this.scenario.getTransitVehicles(), trDirectLinkDemand, this.trDirectLinks, timeBeans, variables, params.get(CNLSUEModel.CapacityMultiplierName));
+		double scale = 1.;
+		if(params.get(CNLSUEModel.CapacityMultiplierName)!=null)scale = params.get(CNLSUEModel.CapacityMultiplierName);
+				
+		this.ltmDemand = new LTMLoadableDemandV2(auxflow.getFirst(), this.routes, ts, this.scenario.getTransitVehicles(), trDirectLinkDemand, directLinks, timeBeans, variables, scale);
 	
 	}
 	
@@ -707,7 +711,9 @@ public Map<String, Map<Id<AnalyticalModelODpair>, Double>> getCarProb() {
 	return carProb;
 }
 
-
+private double demandDistributed= 0;
+private int rNum = 0;
+private int trNum = 0;
 /**
  * Applys the choice model to a specific od pair and generates route flows for car and transit
  * Mainly consists of three components, route choice, tr route choice and mode choice 
@@ -722,13 +728,17 @@ public Map<String, Map<Id<AnalyticalModelODpair>, Double>> getCarProb() {
  */
 protected Tuple<Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>>,Map<String,Map<Id<AnalyticalModelTransitRoute>,Tuple<Double,double[]>>>> applyChoiceModel(LinkedHashMap<String,Double> oparams, LinkedHashMap<String, Double> anaParams,Map<String,Object> additionalDataContainer){
 	
-	
+	this.demandDistributed = 0;
+	this.rNum = 0;
+	this.trNum = 0;
 	Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>> routeFlows=new HashMap<>();
 	Map<String,Map<Id<AnalyticalModelTransitRoute>,Tuple<Double,double[]>>> trRouteFlows = new HashMap<>();
 	for(String timeBeanId:this.timeBeans.keySet()) {
+		routeFlows.put(timeBeanId, new ConcurrentHashMap<>());
+		trRouteFlows.put(timeBeanId, new ConcurrentHashMap<>());
 		this.odPairs.getODpairset().keySet().parallelStream().forEach(ODpairId->{
-
-
+		double distributedDemand =0;
+		
 			//________car utility____________
 
 			AnalyticalModelODpair odpair=this.odPairs.getODpairset().get(ODpairId);
@@ -740,16 +750,17 @@ protected Tuple<Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>>
 			
 
 			LinkedHashMap<String,Double> params = this.handleBasicParams(oparams, subPopulation, this.config);
-
+			
 
 			Map<Id<AnalyticalModelRoute>,Double> utility=new HashMap<>();
 			Map<Id<AnalyticalModelRoute>,double[]> utilityGrad=new HashMap<>();
-
+			
 			double maxUtil = Double.NEGATIVE_INFINITY;
 			double[] maxUtilGrad = null;
 			double denominator = 0;
 			double expectedMaxUtil = 0;
 			double[] emuGrad = null;
+			if(routes!=null && routes.size()!=0) {
 			for(AnalyticalModelRoute rr:routes){//First loop to calculate utility
 				if(!this.routes.containsKey(rr.getRouteId()))this.routes.put(rr.getRouteId(), rr);
 				CNLLTMRoute r = (CNLLTMRoute)rr;
@@ -776,7 +787,7 @@ protected Tuple<Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>>
 			expectedMaxUtil = maxUtil+1/anaParams.get(CNLSUEModel.LinkMiuName)*Math.log(expectedMaxUtil);
 
 
-
+			double totalProb = 0;
 			for(AnalyticalModelRoute r:routes){// now calculate the route choice probability 
 				double u=utility.get(r.getRouteId());
 				double prob = Math.exp((u-maxUtil))/denominator;
@@ -786,6 +797,10 @@ protected Tuple<Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>>
 					emuGrad = MatrixUtils.createRealVector(utilityGrad.get(r.getRouteId())).mapMultiply(prob).add(emuGrad).toArray();
 				}
 				this.routeProb.get(timeBeanId).put(r.getRouteId(), prob);//we will save the route flow and its gradients for further analysis. 
+				totalProb+=prob;
+			}
+			if(Math.abs(totalProb-1)>.1) {
+				logger.debug("sum of probabilities is not 1. Debug!!!!");
 			}
 
 			for(AnalyticalModelRoute r:routes) {// now the gradient computations // requires another loop as we need the choice probabilities to calculate this.
@@ -794,12 +809,10 @@ protected Tuple<Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>>
 				this.routeProbGrad.get(timeBeanId).put(r.getRouteId(), probGrad);
 			}
 			emuGrad = MatrixUtils.createRealVector(emuGrad).mapDivide(anaParams.get(CNLSUEModel.LinkMiuName)).getData();
-
+			}
 			//__________start tr utility______________
 
 			List<AnalyticalModelTransitRoute> trRoutes=odpair.getTrRoutes(timeBeanId);
-
-			
 
 			Map<Id<AnalyticalModelTransitRoute>,Double> trUtility = new HashMap<>();
 			Map<Id<AnalyticalModelTransitRoute>,double[]> trUtilityGrad = new HashMap<>();
@@ -809,65 +822,71 @@ protected Tuple<Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>>
 			double denominatorTr = 0;
 			double expectedMaxTrUtil = 0;
 			double[] emuTrGrad = null;
-
-			for(AnalyticalModelTransitRoute rr:trRoutes){//First loop to calculate utility
+			
+			if(trRoutes!=null && trRoutes.size()!=0) {
+	
 				
-				CNLTransitRouteLTM r = (CNLTransitRouteLTM)rr;
-				if(!this.trRoutes.get(timeBeanId).containsKey(rr.getTrRouteId())) {
-					this.trRoutes.get(timeBeanId).put(rr.getTrRouteId(), r);
-					this.transitLinks.get(timeBeanId).putAll(r.getTransitLinks());
-					this.trDirectLinks.get(timeBeanId).putAll(r.getTransitDirectLinks().stream().collect(Collectors.toMap(t->t.getTrLinkId(), t->t)));
-				}
 				
-				double u=0;
-				double[] du;
-				Tuple<Double,double[]>util=r.calcRouteUtility(params, anaParams,this.network,this.transitLinks.get(timeBeanId),this.fareCalculator ,additionalDataContainer,this.timeBeans.get(timeBeanId),timeBeanId);
-				u = util.getFirst();
-				du = util.getSecond();
-				u=u+Math.log(odpair.getTrPathSize().get(timeBeanId).get(r.getTrRouteId()));//adding the path size term
-				if(maxTrUtil<u) {
-					maxTrUtil = u;
-					maxTrUtilGrad = du;
+				for(AnalyticalModelTransitRoute rr:trRoutes){//First loop to calculate utility
+					
+					CNLTransitRouteLTM r = (CNLTransitRouteLTM)rr;
+					if(!this.trRoutes.get(timeBeanId).containsKey(rr.getTrRouteId())) {
+						this.trRoutes.get(timeBeanId).put(rr.getTrRouteId(), r);
+						this.transitLinks.get(timeBeanId).putAll(r.getTransitLinks());
+						
+					}
+					
+					double u=0;
+					double[] du;
+					Tuple<Double,double[]>util=r.calcRouteUtility(params, anaParams,this.network,this.transitLinks.get(timeBeanId),this.fareCalculator ,additionalDataContainer,this.timeBeans.get(timeBeanId),timeBeanId);
+					u = util.getFirst();
+					du = util.getSecond();
+					u=u+Math.log(odpair.getTrPathSize().get(timeBeanId).get(r.getTrRouteId()));//adding the path size term
+					if(maxTrUtil<u) {
+						maxTrUtil = u;
+						maxTrUtilGrad = du;
+					}
+					trUtility.put(r.getTrRouteId(), u);
+					trUtilityGrad.put(r.getTrRouteId(), du);
 				}
-				trUtility.put(r.getTrRouteId(), u);
-				trUtilityGrad.put(r.getTrRouteId(), du);
-			}
-			for(AnalyticalModelTransitRoute r:trRoutes){// second loop calculates expected maximum utility and the denominator of the logit model
-				//(a seperate loop is required to subtract the maximum utility)
-				denominatorTr += Math.exp(trUtility.get(r.getTrRouteId())-maxTrUtil);
-				expectedMaxTrUtil+=Math.exp((trUtility.get(r.getTrRouteId())-maxTrUtil));
-
-			}
-
-			expectedMaxTrUtil = maxUtil+1/anaParams.get(CNLSUEModel.LinkMiuName)*Math.log(expectedMaxTrUtil);
-
-			for(AnalyticalModelTransitRoute r:trRoutes){// now calculate the route choice probability 
-				double u=trUtility.get(r.getTrRouteId());
-
-				double prob = Math.exp((u-maxTrUtil))/denominatorTr;
-				if(emuTrGrad == null) {
-					emuTrGrad = MatrixUtils.createRealVector(trUtilityGrad.get(r.getTrRouteId())).mapMultiply(prob).toArray();
-				}else {
-					emuTrGrad = MatrixUtils.createRealVector(utilityGrad.get(r.getTrRouteId())).mapMultiply(prob).add(emuTrGrad).toArray();
+				for(AnalyticalModelTransitRoute r:trRoutes){// second loop calculates expected maximum utility and the denominator of the logit model
+					//(a seperate loop is required to subtract the maximum utility)
+					denominatorTr += Math.exp(trUtility.get(r.getTrRouteId())-maxTrUtil);
+					expectedMaxTrUtil+=Math.exp((trUtility.get(r.getTrRouteId())-maxTrUtil));
+	
 				}
-				this.trRouteProb.get(timeBeanId).put(r.getTrRouteId(), prob);//we will save the route flow and its gradients for further analysis. 
-
+	
+				expectedMaxTrUtil = maxUtil+1/anaParams.get(CNLSUEModel.LinkMiuName)*Math.log(expectedMaxTrUtil);
+				double totaltrProb = 0;
+				for(AnalyticalModelTransitRoute r:trRoutes){// now calculate the route choice probability 
+					double u=trUtility.get(r.getTrRouteId());
+	
+					double prob = Math.exp((u-maxTrUtil))/denominatorTr;
+					if(emuTrGrad == null) {
+						emuTrGrad = MatrixUtils.createRealVector(trUtilityGrad.get(r.getTrRouteId())).mapMultiply(prob).toArray();
+					}else {
+						emuTrGrad = MatrixUtils.createRealVector(trUtilityGrad.get(r.getTrRouteId())).mapMultiply(prob).add(emuTrGrad).toArray();
+					}
+					this.trRouteProb.get(timeBeanId).put(r.getTrRouteId(), prob);//we will save the route flow and its gradients for further analysis. 
+					totaltrProb+=prob;
+				}
+				if(Math.abs(totaltrProb-1)>.1) {
+					logger.debug("sum of tr probabilities is not 1. Debug!!!!");
+				}
+				for(AnalyticalModelTransitRoute r:trRoutes) {// now the gradient computations // requires another loop as we need the choice probabilities to calculate this.
+					double[] du = trUtilityGrad.get(r.getTrRouteId());
+					double[] probGrad = MatrixUtils.createRealVector(du).subtract(emuTrGrad).mapMultiply(this.trRouteProb.get(timeBeanId).get(r.getTrRouteId())).toArray();
+					this.trRouteProbGrad.get(timeBeanId).put(r.getTrRouteId(), probGrad);
+				}
+				emuTrGrad = MatrixUtils.createRealVector(emuTrGrad).mapDivide(anaParams.get(CNLSUEModel.LinkMiuName)).getData();
 			}
-
-			for(AnalyticalModelTransitRoute r:trRoutes) {// now the gradient computations // requires another loop as we need the choice probabilities to calculate this.
-				double[] du = trUtilityGrad.get(r.getTrRouteId());
-				double[] probGrad = MatrixUtils.createRealVector(du).subtract(emuTrGrad).mapMultiply(this.trRouteProb.get(timeBeanId).get(r.getTrRouteId())).toArray();
-				this.trRouteProbGrad.get(timeBeanId).put(r.getTrRouteId(), probGrad);
-			}
-			emuTrGrad = MatrixUtils.createRealVector(emuTrGrad).mapDivide(anaParams.get(CNLSUEModel.LinkMiuName)).getData();
-
 			//____________________Mode Choice _______________________
 			double modeMiu=anaParams.get(CNLSUEModel.ModeMiuName);
 			double carProb = 1;
 			double[] carProbGrad = new double[this.gradientKeys.getKeySet().size()];
 			double trProb = 0;
 			double[] trProbGrad = new double[this.gradientKeys.getKeySet().size()];
-
+			
 			double demand=this.Demand.get(timeBeanId).get(odpair.getODpairId());
 			//if(demand!=0) { 
 
@@ -890,6 +909,10 @@ protected Tuple<Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>>
 				trProbGrad = MatrixUtils.createRealVector(emuTrGrad).subtract(MatrixUtils.createRealVector(emuGrad).mapMultiply(carProb).add(MatrixUtils.createRealVector(emuTrGrad).mapMultiply(trProb))).mapMultiply(trProb*modeMiu).toArray();
 
 			}
+			if(Math.abs(carProb+trProb-1)>.1) {
+			
+				logger.debug("mode probability is not summing up to 1. Debug!!!!");
+			}
 			this.carProb.get(timeBeanId).put(ODpairId, carProb);
 			this.carProbGrad.get(timeBeanId).put(ODpairId, carProbGrad);
 			this.trProb.get(timeBeanId).put(ODpairId, trProb);
@@ -898,7 +921,7 @@ protected Tuple<Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>>
 
 			//_____________Demand gradient____________
 
-			if(this.ifODParameterIncidence.get(timeBeanId)) {
+			if(this.ifODParameterIncidence) {
 				Map<String,Double> oi = new HashMap<>();
 				double sum = 0;
 				for(String var1:this.gradientKeys.getKeySet()) {
@@ -914,29 +937,63 @@ protected Tuple<Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>>
 			RealVector odInc = MatrixUtils.createRealVector(this.odParameterIncidence.get(timeBeanId).get(odpair.getODpairId()));
 			RealVector p = this.gradientKeys.getRealVector(oparams);
 
-			RealVector demandGradient = odInc.ebeDivide(p).mapMultiply(demand).ebeDivide(MatrixUtils.createRealVector(this.gradMultiplier));
+			RealVector demandGradient = odInc.ebeDivide(p).mapMultiply(demand);
 
 			//____________flow__________
-			routeFlows.put(timeBeanId,new HashMap<>());
-			for(AnalyticalModelRoute rr:routes){//First loop to calculate utility
-				double flow = demand*carProb*this.routeProb.get(timeBeanId).get(rr.getRouteId());
-				double[] flowGrad = demandGradient.mapMultiply(carProb*this.routeProb.get(timeBeanId).get(rr.getRouteId()))
-						.add(MatrixUtils.createRealVector(carProbGrad).mapMultiply(demand*this.routeProb.get(timeBeanId).get(rr.getRouteId())))
-						.add(MatrixUtils.createRealVector(this.routeProbGrad.get(timeBeanId).get(rr.getRouteId())).mapMultiply(demand*carProb)).toArray();
-				routeFlows.get(timeBeanId).put(rr.getRouteId(), new Tuple<>(flow,flowGrad));
+			
+			if(routes!=null && routes.size()!=0) {
+				for(AnalyticalModelRoute rr:routes){//First loop to calculate utility
+					this.rNum++;
+					double flow = demand*carProb*this.routeProb.get(timeBeanId).get(rr.getRouteId());
+					distributedDemand+=flow;
+					double[] flowGrad = demandGradient.mapMultiply(carProb*this.routeProb.get(timeBeanId).get(rr.getRouteId()))
+							.add(MatrixUtils.createRealVector(carProbGrad).mapMultiply(demand*this.routeProb.get(timeBeanId).get(rr.getRouteId())))
+							.add(MatrixUtils.createRealVector(this.routeProbGrad.get(timeBeanId).get(rr.getRouteId())).mapMultiply(demand*carProb)).toArray();
+					Tuple<Double,double[]> d = routeFlows.get(timeBeanId).put(rr.getRouteId(), new Tuple<>(flow,flowGrad));
+					if(d!=null) {
+						logger.debug("route keys are not unique!!!");
+					}
+				}
 			}
 			
 			//___________trFlow____________
-			trRouteFlows.put(timeBeanId,new HashMap<>());
+			
+			
+			if(trRoutes!=null && trRoutes.size()!=0) {
 			for(AnalyticalModelTransitRoute rr:trRoutes){//First loop to calculate utility
+				this.trNum++;
 				double flow = demand*trProb*this.trRouteProb.get(timeBeanId).get(rr.getTrRouteId());
+				distributedDemand+=flow;
 				double[] flowGrad = demandGradient.mapMultiply(trProb*this.trRouteProb.get(timeBeanId).get(rr.getTrRouteId()))
 						.add(MatrixUtils.createRealVector(trProbGrad).mapMultiply(demand*this.trRouteProb.get(timeBeanId).get(rr.getTrRouteId())))
 						.add(MatrixUtils.createRealVector(this.trRouteProbGrad.get(timeBeanId).get(rr.getTrRouteId())).mapMultiply(demand*trProb)).toArray();
-				trRouteFlows.get(timeBeanId).put(rr.getTrRouteId(), new Tuple<>(flow,flowGrad));
+				Tuple<Double,double[]> d = trRouteFlows.get(timeBeanId).put(rr.getTrRouteId(), new Tuple<>(flow,flowGrad));
+				if(d!=null) {
+					logger.debug("route keys are not unique!!!");
+				}
 			}
-			
+			}
+			if(Math.abs(distributedDemand-demand)>1) {
+				logger.debug("ditributed demand do not sum up to total demand of the od pair. Debug!!!");
+			}
+			this.demandDistributed+=distributedDemand;
 		});
+	}
+	this.ifODParameterIncidence = false;
+	double sum = 0;
+	int rNum = 0;
+	int trNum = 0;
+	for(Map<Id<AnalyticalModelRoute>, Tuple<Double, double[]>> d:routeFlows.values()) {
+		for(Tuple<Double,double[]>dd:d.values()) {
+			sum+=dd.getFirst();
+			rNum++;
+		}
+	}
+	for(Map<Id<AnalyticalModelTransitRoute>, Tuple<Double, double[]>> d:trRouteFlows.values()) {
+		for(Tuple<Double,double[]>dd:d.values()) {
+			sum+=dd.getFirst();
+			trNum++;
+		}
 	}
 	return new Tuple<>(routeFlows,trRouteFlows);
 }
@@ -983,7 +1040,8 @@ protected boolean UpdateRouteFlow(Tuple<Map<String, Map<Id<AnalyticalModelRoute>
 	double sum=0;
 	double error=0;
 	
-	
+	double totalDemand = 0;
+	double totalSqDemand = 0;
 	for(String t:this.timeBeans.keySet()){
 		routeFlowUpdate.put(t, new HashMap<>());
 		routeFlowUpdateGrad.put(t, new HashMap<>());
@@ -1002,8 +1060,8 @@ protected boolean UpdateRouteFlow(Tuple<Map<String, Map<Id<AnalyticalModelRoute>
 					currentVolume = this.routeFlow.get(t).get(r.getKey());
 					currentVolumeGrad = this.routeFlowGradient.get(t).get(r.getKey());
 				}
-				
-				
+				totalDemand+=r.getValue().getFirst();
+				totalSqDemand+=Math.pow(r.getValue().getFirst(),2);
 				double delta = r.getValue().getFirst()-currentVolume;
 				routeFlowUpdate.get(t).put(r.getKey(), delta);
 				routeFlowUpdateGrad.get(t).put(r.getKey(), LTMUtils.subtract(r.getValue().getSecond(), currentVolumeGrad));
@@ -1033,7 +1091,8 @@ protected boolean UpdateRouteFlow(Tuple<Map<String, Map<Id<AnalyticalModelRoute>
 				currentVolume = this.trRouteFlow.get(t).get(r.getKey());
 				currentVolumeGrad = this.trRouteFlowGradient.get(t).get(r.getKey());
 			}
-			
+			totalDemand+=r.getValue().getFirst();
+			totalSqDemand+=Math.pow(r.getValue().getFirst(),2);
 			
 			double delta = r.getValue().getFirst()-currentVolume;
 			trRouteFlowUpdate.get(t).put(r.getKey(), delta);
@@ -1055,6 +1114,8 @@ protected boolean UpdateRouteFlow(Tuple<Map<String, Map<Id<AnalyticalModelRoute>
 			squareSum+=error;
 		}
 	}
+	System.out.println("total demand = "+totalDemand);
+	System.out.println("total demand squared= "+totalSqDemand);
 	
 	if(squareSum==Double.NaN) {
 		System.out.println("WAIT!!!!Problem!!!!!");
@@ -1161,7 +1222,7 @@ private void resetCarDemand() {
 			}
 			}
 		
-		System.out.println();
+	//	System.out.println();
 
 	}
 }

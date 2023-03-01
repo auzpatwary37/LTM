@@ -59,7 +59,7 @@ public class ODDifferentiableLTMModelTest {
 
 	//public static void main(String[] args) {
 	public static void main(String[] args) {
-		Measurements originalMeasurements = new MeasurementsReader().readMeasurements("siouxFallsSimulatedLinkVolumes.xml");
+		Measurements originalMeasurements = new MeasurementsReader().readMeasurements("siouxfalls-2014/siouxFallsEmptyLinkVolumes.xml");
 		Network net = NetworkUtils.readNetwork("siouxfalls-2014/Siouxfalls_network_PT.xml");
 		
 		Set<Id<Measurement>> mKeys = new HashSet<>(originalMeasurements.getMeasurements().keySet());
@@ -75,7 +75,7 @@ public class ODDifferentiableLTMModelTest {
 		config.transit().setTransitScheduleFile("siouxfalls-2014/Siouxfalls_transitSchedule.xml");
 		config.transit().setVehiclesFile("siouxfalls-2014/Siouxfalls_vehicles.xml");
 		
-		config.plans().setInputFile("outputSiouxFalls/output_plans.xml.gz");
+		config.plans().setInputFile("siouxfalls-2014/output_plans.xml.gz");
 		config.network().setInputFile("siouxfalls-2014/Siouxfalls_network_PT.xml");
 		Scenario scenario = ScenarioUtils.loadScenario(config);
 		//Vehicles vehicles = VehicleUtils.createVehiclesContainer();
@@ -85,7 +85,7 @@ public class ODDifferentiableLTMModelTest {
 		Map<String,FareCalculator>fareCalculators = new HashMap<>();
 		fareCalculators.put("bus", new UniformFareCalculator(0));
 		
-		Network odNetwork=null;
+		Network odNetwork=NetworkUtils.readNetwork("siouxfalls-2014/odNet.xml");
 		
 		
 		

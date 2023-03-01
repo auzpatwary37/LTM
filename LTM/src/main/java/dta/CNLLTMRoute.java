@@ -18,6 +18,7 @@ import ust.hk.praisehk.metamodelcalibration.analyticalModel.AnalyticalModelNetwo
 import ust.hk.praisehk.metamodelcalibration.analyticalModel.AnalyticalModelRoute;
 import ust.hk.praisehk.metamodelcalibration.analyticalModelImpl.CNLRoute;
 import ust.hk.praisehk.metamodelcalibration.analyticalModelImpl.CNLSUEModel;
+import utils.MapToArray;
 
 public class CNLLTMRoute extends CNLRoute{
 	
@@ -44,7 +45,7 @@ public class CNLLTMRoute extends CNLRoute{
 	
 	public Tuple<Double,double[]> calcRouteUtility(LinkedHashMap<String, Double> parmas,LinkedHashMap<String, Double> anaParmas,Network network,Tuple<Double,Double>timeBean,String timeBeanId,Map<String, ? extends Object> additionalDataContainer) {
 		Map<NetworkRoute, Map<String, Tuple<Double, double[]>>> tt = (Map<NetworkRoute, Map<String, Tuple<Double, double[]>>>)additionalDataContainer.get("car");
-		
+		MapToArray<String> variableKeys = (MapToArray<String>)additionalDataContainer.get("variableKeys");
 		
 		double MUTravelTime=parmas.get(CNLSUEModel.MarginalUtilityofTravelCarName)/3600.0-parmas.get(CNLSUEModel.MarginalUtilityofPerformName)/3600.0;
 		double ModeConstant;
@@ -63,7 +64,7 @@ public class CNLLTMRoute extends CNLRoute{
 		}
 		double MUDistanceCar=parmas.get(CNLSUEModel.MarginalUtilityofDistanceCarName);
 		double travelTime = 0;
-		double[] travelTimeGrad = null;
+		double[] travelTimeGrad = new double[variableKeys.getKeySet().size()];
 		if(tt==null)travelTime = this.getFreeFlowTravelTime(network);
 		else {
 			travelTime = tt.get((NetworkRoute)this.getRoute()).get(timeBeanId).getFirst();

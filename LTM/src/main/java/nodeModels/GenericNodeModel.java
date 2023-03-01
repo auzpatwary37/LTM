@@ -89,7 +89,8 @@ public class GenericNodeModel implements NodeModel{
 	}
 	@Override
 	public void setTimeStepAndRoutes(double[] timePoints, MapToArray<NetworkRoute> routes) {
-		
+		this.timePoints = timePoints;
+		this.T = timePoints.length;
 	}
 
 	public void setOptimizationVariables(MapToArray<VariableDetails> variables) {
