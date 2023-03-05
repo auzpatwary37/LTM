@@ -29,6 +29,7 @@ import ust.hk.praisehk.metamodelcalibration.analyticalModelImpl.CNLSUEModel;
 import ust.hk.praisehk.metamodelcalibration.analyticalModelImpl.CNLTransitDirectLink;
 import ust.hk.praisehk.metamodelcalibration.analyticalModelImpl.CNLTransitRoute;
 import ust.hk.praisehk.metamodelcalibration.analyticalModelImpl.CNLTransitTransferLink;
+import utils.LTMLoadableDemandV2;
 import utils.LTMUtils;
 import utils.MapToArray;
 
@@ -143,14 +144,14 @@ public class CNLTransitRouteLTM extends CNLTransitRoute{
 	public Map<String,Set<TransitDirectLink>> getDirectLinkUsage(Network network, Map<String,Tuple<Double,Double>>timeBean, String departingTimeId,Map<String, Object> additionalDataContainer){
 		Map<String,Set<TransitDirectLink>> links = new HashMap<>();
 		double time = timeBean.get(departingTimeId).getFirst()+Math.random()*(timeBean.get(departingTimeId).getSecond()-timeBean.get(departingTimeId).getFirst());
-		Map<NetworkRoute, Map<String, Map<String, Tuple<Tuple<Double, double[]>,Tuple<Double, double[]>>>>> trTravelAndWaitTime = (Map<NetworkRoute, Map<String, Map<String, Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>>>>>) additionalDataContainer.get("transit");
+		Map<Id<NetworkRoute>, Map<String, Map<String, Tuple<Tuple<Double, double[]>,Tuple<Double, double[]>>>>> trTravelAndWaitTime = (Map<Id<NetworkRoute>, Map<String, Map<String, Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>>>>>) additionalDataContainer.get("transit");
 		for(TransitDirectLink tdl:this.getTransitDirectLinks()) {
 			String timeBeanId = this.getTimeId(time, timeBean);
 			if(!links.containsKey(timeBeanId))links.put(timeBeanId, new HashSet<>());
 			links.get(timeBeanId).add(tdl);
 			NetworkRoute r = tdl.getTs().getTransitLines().get(Id.create(tdl.getLineId(), TransitLine.class)).getRoutes().get(Id.create(tdl.getRouteId(), TransitRoute.class)).getRoute();
 			if(trTravelAndWaitTime!=null) {
-				Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>> tw = trTravelAndWaitTime.get(r).get(timeBeanId).get(tdl.getStartingLinkId().toString()+"___"+tdl.getEndingLinkId().toString());
+				Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>> tw = trTravelAndWaitTime.get(LTMLoadableDemandV2.getTrvNetworkRoute(Id.create(tdl.getLineId(), TransitLine.class), Id.create(tdl.getRouteId(), TransitRoute.class), r)).get(timeBeanId).get(tdl.getStartingLinkId().toString()+"___"+tdl.getEndingLinkId().toString());
 				time+=tw.getFirst().getFirst();
 				time+=tw.getSecond().getFirst();
 			}else {
@@ -165,7 +166,7 @@ public class CNLTransitRouteLTM extends CNLTransitRoute{
 	public Map<String,Set<FareLink>> getFareLinkUsage(Network network, Map<String,Tuple<Double,Double>>timeBean, String departingTimeId,Map<String, Object> additionalDataContainer){
 		Map<String,Set<FareLink>> links = new HashMap<>();
 		double time = timeBean.get(departingTimeId).getFirst()+Math.random()*(timeBean.get(departingTimeId).getSecond()-timeBean.get(departingTimeId).getFirst());
-		Map<NetworkRoute, Map<String, Map<String, Tuple<Tuple<Double, double[]>,Tuple<Double, double[]>>>>> trTravelAndWaitTime = (Map<NetworkRoute, Map<String, Map<String, Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>>>>>) additionalDataContainer.get("transit");
+		Map<Id<NetworkRoute>, Map<String, Map<String, Tuple<Tuple<Double, double[]>,Tuple<Double, double[]>>>>> trTravelAndWaitTime = (Map<Id<NetworkRoute>, Map<String, Map<String, Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>>>>>) additionalDataContainer.get("transit");
 		Map<Id<TransitLink>,FareLink> startingLinkMap = new HashMap<>();
 		
 		for(FareLink l:this.getFareLinks()) {
@@ -182,8 +183,10 @@ public class CNLTransitRouteLTM extends CNLTransitRoute{
 			if(!links.containsKey(timeBeanId) && startingLinkMap.containsKey(tdl.getTrLinkId()))links.put(timeBeanId, new HashSet<>());
 			if(startingLinkMap.containsKey(tdl.getTrLinkId()))links.get(timeBeanId).add(startingLinkMap.get(tdl.getTrLinkId()));
 			NetworkRoute r = tdl.getTs().getTransitLines().get(Id.create(tdl.getLineId(), TransitLine.class)).getRoutes().get(Id.create(tdl.getRouteId(), TransitRoute.class)).getRoute();
+			Id<TransitLine> lineId = Id.create(tdl.getLineId(), TransitLine.class);
+			Id<TransitRoute> routeId = Id.create(tdl.getRouteId(), TransitRoute.class);
 			if(trTravelAndWaitTime!=null) {
-				Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>> tw = trTravelAndWaitTime.get(r).get(timeBeanId).get(tdl.getStartingLinkId().toString()+"___"+tdl.getEndingLinkId().toString());
+				Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>> tw = trTravelAndWaitTime.get(LTMLoadableDemandV2.getTrvNetworkRoute(lineId, routeId, r)).get(timeBeanId).get(tdl.getStartingLinkId().toString()+"___"+tdl.getEndingLinkId().toString());
 				time+=tw.getFirst().getFirst();
 				time+=tw.getSecond().getFirst();
 			}else {

@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.math.linear.MatrixUtils;
+import org.jboss.logging.Logger;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.population.Route;
 import org.matsim.core.population.routes.NetworkRoute;
@@ -21,6 +23,7 @@ import utils.VariableDetails;
  */
 
 public class GenericLinkModel implements LinkModel{
+	private Logger logger = Logger.getLogger(GenericLinkModel.class);
 	private final Link link;
 	private double[] timePoints;// time slots
 	private double[][] Nrx0;// flow at x0 for route r//note: this will be set from the node model directly. 
@@ -44,7 +47,8 @@ public class GenericLinkModel implements LinkModel{
 	private double[] Sdt;//time gradient of S
 	private double[] Rdt;//time gradient of R
 	private double[]k;// number of vehicles on the road 
-	private MapToArray<NetworkRoute> routes;// map to array converter for the routes on this link
+	private MapToArray<Id<NetworkRoute>> routesId;// map to array converter for the routes on this link
+	private Map<Id<NetworkRoute>,NetworkRoute> routes;
 	private int T;//The number of time slots
 	private FD fd;// Triangular fundamental diagram with vf, vw, qm, kj
 	private double delT;//length of each time slots
@@ -68,22 +72,23 @@ public class GenericLinkModel implements LinkModel{
 		this.variables = variables;
 		this.dNx0 = new double[this.T][this.variables.getKeySet().size()];
 		this.dNxl = new double[this.T][this.variables.getKeySet().size()];
-		this.dNrx0 = new double[routes.getKeySet().size()][T][this.variables.getKeySet().size()];
-		this.dNrxl = new double[routes.getKeySet().size()][T][this.variables.getKeySet().size()];
+		this.dNrx0 = new double[routesId.getKeySet().size()][T][this.variables.getKeySet().size()];
+		this.dNrxl = new double[routesId.getKeySet().size()][T][this.variables.getKeySet().size()];
 		this.dS = new double[T][this.variables.getKeySet().size()];
 		this.dR = new double[T][this.variables.getKeySet().size()];
 	}
 	
 	@Override
-	public void setLTMTimeBeanAndRouteSet(double[]timePoints, MapToArray<NetworkRoute> routes) {
+	public void setLTMTimeBeanAndRouteSet(double[]timePoints, Map<Id<NetworkRoute>,NetworkRoute> routes) {
 		this.timePoints = timePoints;
 		this.T = timePoints.length;
 		this.delT = timePoints[1]-timePoints[0];
  		this.routes = routes;
-		Nrx0 = new double[routes.getKeySet().size()][T];
-		Nrx0dt = new double[routes.getKeySet().size()][T];
-		Nrxl = new double[routes.getKeySet().size()][T];
-		Nrxldt = new double[routes.getKeySet().size()][T];
+ 		this.routesId = new MapToArray<Id<NetworkRoute>>("routes",routes.keySet());
+		Nrx0 = new double[routes.size()][T];
+		Nrx0dt = new double[routes.size()][T];
+		Nrxl = new double[routes.size()][T];
+		Nrxldt = new double[routes.size()][T];
 		Nx0 = new double[T];
 		Nx0dt = new double[T];
 		Nxl = new double[T];
@@ -97,10 +102,16 @@ public class GenericLinkModel implements LinkModel{
 
 	@Override
 	public int getTimeIndex(double t) {
+		int tReturn = 0;
 		for(int i = 0; i<timePoints.length;i++) {
-			if(t>=timePoints[i])return i-1;
+			if(t<timePoints[i]) {
+				tReturn = i-1;
+			}
 		}
-		return 0;
+		if(tReturn <0) {
+			System.out.println("time index negative. Debug!!!");
+		}
+		return tReturn;
 	}
 
 
@@ -132,11 +143,28 @@ public class GenericLinkModel implements LinkModel{
 				}
 				this.dS[timeIdx] = ds;
 				this.Sdt[timeIdx] = sdt;
+				
+				if(Double.isNaN(s)||Double.isInfinite(s)) {
+					logger.debug("sending flow is nan or infinite!");
+				}
+				if(Double.isNaN(sdt)||Double.isInfinite(sdt)) {
+					logger.debug("sending flow time gradient is nan or infinite!");
+				}
+				
+				if(MatrixUtils.createRealVector(ds).isNaN()||MatrixUtils.createRealVector(ds).isInfinite()) {
+					logger.debug("sending flow gradient is nan or infinite!");
+				}
+				
 			}else {
 				N = this.Nx0[tl]+(this.Nx0[tl]-this.Nx0[tl+1])*(t-timePoints[tl])/delT;//interpolate between the cumulative flow of tl and tu = tl+1 to gert the cumulative flow at t. 
 				s = Math.min(N-this.Nxl[timeIdx], fd.qm*delT);
+				
+				if(Double.isNaN(s)||Double.isInfinite(s)) {
+					logger.debug("sending flow is nan or infinite!");
+				}
 			}
 			this.S[timeIdx] = s;
+			
 		
 		return new TuplesOfThree<>(S,Sdt,dS);// the sending flow is the min between this two term 
 	}
@@ -173,9 +201,22 @@ public class GenericLinkModel implements LinkModel{
 				}
 				this.dR[timeIdx] = dr;
 				this.Rdt[timeIdx] = rdt;
+				if(Double.isNaN(r)||Double.isInfinite(r)) {
+					logger.debug("sending flow is nan or infinite!");
+				}
+				if(Double.isNaN(rdt)||Double.isInfinite(rdt)) {
+					logger.debug("sending flow time gradient is nan or infinite!");
+				}
+				
+				if(MatrixUtils.createRealVector(dr).isNaN()||MatrixUtils.createRealVector(dr).isInfinite()) {
+					logger.debug("sending flow gradient is nan or infinite!");
+				}
 			}else {
 				N = this.Nxl[tl]+(this.Nxl[tl]-this.Nxl[tl+1])*(t-timePoints[tl])/delT;//interpolate between the cumulative flow of tl and tu = tl+1 to gert the cumulative flow at t. 
 				r = Math.min(N+fd.kj*fd.L-this.Nx0[timeIdx], fd.qm*delT);
+				if(Double.isNaN(r)||Double.isInfinite(r)) {
+					logger.debug("sending flow is nan or infinite!");
+				}
 			}
 			this.R[timeIdx] = r;
 		}
@@ -202,8 +243,8 @@ public class GenericLinkModel implements LinkModel{
 
 
 	@Override
-	public void updateNrx0(double flow, NetworkRoute route, int timeIndx,double[] dNrx0) {
-		int ind = this.routes.getIndex(route);
+	public void updateNrx0(double flow, Id<NetworkRoute> routeId, int timeIndx,double[] dNrx0) {
+		int ind = this.routesId.getIndex(routeId);
 		if(ind ==-1)throw new IllegalArgumentException("Route not present in the route list!!! Debug!!!");
 		this.Nrx0[ind][timeIndx] = flow;
 		if(dNrx0!=null)this.dNrx0[ind][timeIndx]=dNrx0;
@@ -212,8 +253,8 @@ public class GenericLinkModel implements LinkModel{
 
 
 	@Override
-	public void updateNrxl(double flow, NetworkRoute route, int timeInd,double[] dNrxl) {
-		int ind = this.routes.getIndex(route);
+	public void updateNrxl(double flow, Id<NetworkRoute> route, int timeInd,double[] dNrxl) {
+		int ind = this.routesId.getIndex(route);
 		if(ind ==-1)throw new IllegalArgumentException("Route not present in the route list!!! Debug!!!");
 		this.Nrxl[ind][timeInd] = flow;
 		if(dNrxl!=null)this.dNrxl[ind][timeInd]=dNrxl;
@@ -268,10 +309,15 @@ public class GenericLinkModel implements LinkModel{
 
 
 	@Override
-	public MapToArray<NetworkRoute> getRoutes() {
-		return routes;
+	public MapToArray<Id<NetworkRoute>> getRouteIds() {
+		return routesId;
 	}
 	
+	
+	@Override
+	public Map<Id<NetworkRoute>, NetworkRoute> getRoutes() {
+		return routes;
+	}
 
 	@Override
 	public double[][][] getdNrx0() {
@@ -317,10 +363,10 @@ public class GenericLinkModel implements LinkModel{
 
 	@Override
 	public void reset() {
-		Nrx0 = new double[routes.getKeySet().size()][T];
-		Nrx0dt = new double[routes.getKeySet().size()][T];
-		Nrxl = new double[routes.getKeySet().size()][T];
-		Nrxldt = new double[routes.getKeySet().size()][T];
+		Nrx0 = new double[routes.size()][T];
+		Nrx0dt = new double[routes.size()][T];
+		Nrxl = new double[routes.size()][T];
+		Nrxldt = new double[routes.size()][T];
 		Nx0 = new double[T];
 		Nx0dt = new double[T];
 		Nxl = new double[T];
@@ -332,8 +378,8 @@ public class GenericLinkModel implements LinkModel{
 		Rdt = new double[T];
 		this.dNx0 = new double[this.T][this.variables.getKeySet().size()];
 		this.dNxl = new double[this.T][this.variables.getKeySet().size()];
-		this.dNrx0 = new double[routes.getKeySet().size()][T][this.variables.getKeySet().size()];
-		this.dNrxl = new double[routes.getKeySet().size()][T][this.variables.getKeySet().size()];
+		this.dNrx0 = new double[routes.size()][T][this.variables.getKeySet().size()];
+		this.dNrxl = new double[routes.size()][T][this.variables.getKeySet().size()];
 		this.dS = new double[T][this.variables.getKeySet().size()];
 		this.dR = new double[T][this.variables.getKeySet().size()];
 	}

@@ -2,6 +2,7 @@ package linkModels;
 
 import java.util.Map;
 
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 
 import org.matsim.core.population.routes.NetworkRoute;
@@ -30,7 +31,7 @@ public interface LinkModel {
 	 * @param timeLimits
 	 * @param routeIndex
 	 */
-	public void setLTMTimeBeanAndRouteSet(double[] timePoints, MapToArray<NetworkRoute> routes);
+	public void setLTMTimeBeanAndRouteSet(double[] timePoints, Map<Id<NetworkRoute>,NetworkRoute> routes);
 
 	/**
 	 * Get the inherent link 
@@ -78,13 +79,13 @@ public interface LinkModel {
 	 * @param flow
 	 * @param timeIndx
 	 */
-	public void updateNrx0(double flow,NetworkRoute route,int timeIndx,double[]dNrx0);
+	public void updateNrx0(double flow,Id<NetworkRoute> route,int timeIndx,double[]dNrx0);
 	/**
 	 * update the path specific boundary cumulative flow for timeIndex timeIndx at xl
 	 * @param flow
 	 * @param timeIndx
 	 */
-	public void updateNrxl(double flow,NetworkRoute route, int timeInd,double[]dNrxl); 
+	public void updateNrxl(double flow,Id<NetworkRoute> route, int timeInd,double[]dNrxl); 
 	
 	/**
 	 * Get the path specific output cumulative vehicle boundary conditions all through the simulation at x0
@@ -112,7 +113,9 @@ public interface LinkModel {
 	
 	public double[] getK();
 
-	public MapToArray<NetworkRoute> getRoutes();
+	public MapToArray<Id<NetworkRoute>> getRouteIds();
+	
+	public Map<Id<NetworkRoute>,NetworkRoute> getRoutes();
 
 	public int getTimeindexNo();
 	/**

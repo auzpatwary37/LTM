@@ -21,6 +21,7 @@ import org.matsim.core.utils.collections.Tuple;
 
 import linkModels.LinkModel;
 import ltmAlgorithm.DNL;
+import nodeModels.DestinationNodeModel;
 import transit.LinkTransitPassengerModel;
 
 /**
@@ -214,14 +215,19 @@ public class LTMUtils{
 		return r1.toString().equals(r2.toString());
 	}
 	
-	public static Id<Link> findNextLink(NetworkRoute r,Id<Link> fromLink) {
+	public static Id<Link> findNextLink(Tuple<Id<NetworkRoute>,NetworkRoute> r,Id<Link> fromLink,Map<Id<NetworkRoute>, DestinationNodeModel> destinationNodeModels) {
+		if(fromLink.toString().substring(fromLink.toString().length()-1).equals("O")) {
+			return r.getSecond().getStartLinkId();
+		}else if(fromLink.equals(r.getSecond().getEndLinkId())) {
+			return destinationNodeModels.get(r.getFirst()).getInLinkModel().getLink().getId();
+		}
 		int k = 1;
-		if(r.getStartLinkId().equals(fromLink))return r.getLinkIds().get(0);
-		else if(r.getEndLinkId().equals(fromLink))return null;
-		else if(r.getLinkIds().get(r.getLinkIds().size()-1).equals(fromLink))return r.getEndLinkId();
+		if(r.getSecond().getStartLinkId().equals(fromLink))return r.getSecond().getLinkIds().get(0);
+		else if(r.getSecond().getEndLinkId().equals(fromLink))return null;
+		else if(r.getSecond().getLinkIds().get(r.getSecond().getLinkIds().size()-1).equals(fromLink))return r.getSecond().getEndLinkId();
 		else{
-			for(Id<Link> lId:r.getLinkIds()) {
-				if(lId.equals(fromLink))return r.getLinkIds().get(k);
+			for(Id<Link> lId:r.getSecond().getLinkIds()) {
+				if(lId.equals(fromLink))return r.getSecond().getLinkIds().get(k);
 				k++;
 			}
 		}
@@ -232,7 +238,9 @@ public class LTMUtils{
 		Double abyb = A.getFirst()/B.getFirst();
 		double bsquare = Math.pow(B.getFirst(), 2);
 		double[] grad = null;
-		if(A.getThird() != null && B.getThird() != null)MatrixUtils.createRealVector(A.getThird()).mapMultiply(B.getFirst()).subtract(MatrixUtils.createRealVector(B.getThird()).mapMultiply(A.getFirst())).mapDivide(bsquare).getData();//(bda-adb)/b^2
+		if(A.getThird() != null && B.getThird() != null) {
+			grad = MatrixUtils.createRealVector(A.getThird()).mapMultiply(B.getFirst()).subtract(MatrixUtils.createRealVector(B.getThird()).mapMultiply(A.getFirst())).mapDivide(bsquare).getData();//(bda-adb)/b^2
+		}
 		Double dt = null;
 		if(A.getSecond() != null && B.getSecond() != null) dt = (B.getFirst()*A.getSecond()-A.getFirst()*B.getSecond())/bsquare;
 		return new TuplesOfThree<>(abyb,dt,grad);
@@ -248,17 +256,17 @@ public class LTMUtils{
 		return new TuplesOfThree<>(abyb,dt,grad);
 	}
 	
-	public static Link createDummyLink(Node fromNode,Node toNode,NetworkRoute r,boolean ifOriginElseDestination) {
+	public static Link createDummyLink(Node fromNode,Node toNode,Id<NetworkRoute> r,boolean ifOriginElseDestination) {
 		String originDestinationIdentifier = "O";
 		if(!ifOriginElseDestination)originDestinationIdentifier = "D";
-		Link l = NetworkUtils.createLink(Id.createLinkId(r.getRouteDescription()+originDestinationIdentifier), 
+		Link l = NetworkUtils.createLink(Id.createLinkId(r.toString()+originDestinationIdentifier), 
 				fromNode, toNode, null, 10, 10000, 36000, 1);
 		return l;
 	}
-	public static Node createDummyNode(Node originalNode, boolean ifOriginElseDestination,NetworkRoute r) {
+	public static Node createDummyNode(Node originalNode, boolean ifOriginElseDestination,Id<NetworkRoute> r) {
 		String originDestinationIdentifier = "O";
 		if(!ifOriginElseDestination)originDestinationIdentifier = "D";
-		Node n = NetworkUtils.createNode(Id.create(r.getRouteDescription()+originDestinationIdentifier,
+		Node n = NetworkUtils.createNode(Id.create(r.toString()+originDestinationIdentifier,
 				Node.class), new Coord(originalNode.getCoord().getX()+Math.random()*100,
 						originalNode.getCoord().getY()+Math.random()*100));
 		return n;
@@ -365,8 +373,9 @@ public class LTMUtils{
 	}
 	
 	
-	public static TuplesOfThree<Double,Double,double[]> getRouteTravelTime(NetworkRoute r, double[] timePoints, double departureTime, LinkModel boardingLinkModel, LinkModel alightingLinkModel){
-		
+	public static TuplesOfThree<Double,Double,double[]> getRouteTravelTime(Tuple<Id<NetworkRoute>,NetworkRoute> rElement, double[] timePoints, double departureTime, LinkModel boardingLinkModel, LinkModel alightingLinkModel){
+		NetworkRoute r = rElement.getSecond();
+		Id<NetworkRoute>rId = rElement.getFirst();
 		double travelTime = 0;
 		double travelTimedt = 0;
 		double[] dTravelTime = null;
@@ -389,7 +398,7 @@ public class LTMUtils{
 			}
 		}
 		//Assuming there is no gradient of departure time
-		int rInd = boardingLinkModel.getRoutes().getIndex(r);
+		int rInd = boardingLinkModel.getRouteIds().getIndex(rId);
 		double nrx0Before = boardingLinkModel.getNrx0()[rInd][timeStepBefore];
 		double nrx0Beforedt = boardingLinkModel.getNrx0dt()[rInd][timeStepBefore];
 		double[] dnrx0Before = boardingLinkModel.getdNrx0()[rInd][timeStepBefore];
@@ -422,7 +431,7 @@ public class LTMUtils{
 		//Find out the tBefore and tAfter for the arrival
 		int tBefore = timeStepBefore;
 		int tAfter = timeStepBefore;
-		rInd = alightingLinkModel.getRoutes().getIndex(r);
+		rInd = alightingLinkModel.getRouteIds().getIndex(rId);
 		for(int j = timeStepBefore;j<timePoints.length;j++) {
 			if(nrx0>=alightingLinkModel.getNrxl()[rInd][j]) {
 				tBefore = j;
@@ -469,7 +478,7 @@ public class LTMUtils{
 	}
 	
 	
-	public static Tuple<TuplesOfThree<Double,Double,double[]>,TuplesOfThree<Double,Double,double[]>> getTransitRouteWaitAndTravelTime(NetworkRoute r, double[] timePoints, double departureTime, LinkTransitPassengerModel boardingLinkModel, LinkTransitPassengerModel alightingLinkModel){
+	public static Tuple<TuplesOfThree<Double,Double,double[]>,TuplesOfThree<Double,Double,double[]>> getTransitRouteWaitAndTravelTime(Id<NetworkRoute> rId,NetworkRoute r, double[] timePoints, double departureTime, LinkTransitPassengerModel boardingLinkModel, LinkTransitPassengerModel alightingLinkModel){
 		
 		double travelTime = 0;
 		double travelTimedt = 0;
@@ -504,14 +513,14 @@ public class LTMUtils{
 		
 		
 		
-		double nrx0Before = boardingLinkModel.getCumulativeDemandPassenger().get(r).get(alightingLinkModel.getLink().getLink().getId())[timeStepBefore];
-		double nrx0Beforedt = boardingLinkModel.getCumulativeDemandPassengerdt().get(r).get(alightingLinkModel.getLink().getLink().getId())[timeStepBefore];
-		double[] dnrx0Before = boardingLinkModel.getDcumulativeDemandPassenger().get(r).get(alightingLinkModel.getLink().getLink().getId())[timeStepBefore];
+		double nrx0Before = boardingLinkModel.getCumulativeDemandPassenger().get(rId).get(alightingLinkModel.getLink().getLink().getId())[timeStepBefore];
+		double nrx0Beforedt = boardingLinkModel.getCumulativeDemandPassengerdt().get(rId).get(alightingLinkModel.getLink().getLink().getId())[timeStepBefore];
+		double[] dnrx0Before = boardingLinkModel.getDcumulativeDemandPassenger().get(rId).get(alightingLinkModel.getLink().getLink().getId())[timeStepBefore];
 		
 		
-		double nrx0After = boardingLinkModel.getCumulativeDemandPassenger().get(r).get(alightingLinkModel.getLink().getLink().getId())[timeStepAfter];
-		double nrx0Afterdt = boardingLinkModel.getCumulativeDemandPassengerdt().get(r).get(alightingLinkModel.getLink().getLink().getId())[timeStepAfter];
-		double[] dnrx0After = boardingLinkModel.getDcumulativeDemandPassenger().get(r).get(alightingLinkModel.getLink().getLink().getId())[timeStepAfter];
+		double nrx0After = boardingLinkModel.getCumulativeDemandPassenger().get(rId).get(alightingLinkModel.getLink().getLink().getId())[timeStepAfter];
+		double nrx0Afterdt = boardingLinkModel.getCumulativeDemandPassengerdt().get(rId).get(alightingLinkModel.getLink().getLink().getId())[timeStepAfter];
+		double[] dnrx0After = boardingLinkModel.getDcumulativeDemandPassenger().get(rId).get(alightingLinkModel.getLink().getLink().getId())[timeStepAfter];
 		
 		double nrx0 = 0;
 		double nrx0dt = 0;
@@ -539,33 +548,33 @@ public class LTMUtils{
 		int tAfter = timeStepBefore;
 		
 		for(int j = timeStepBefore;j<timePoints.length;j++) {
-			if(nrx0>=boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[j]) {
+			if(nrx0>=boardingLinkModel.getNrPassengerBoard().get(rId).get(alightingLinkModel.getLink().getLink().getId())[j]) {
 				tBefore = j;
 				
 			}
-			if(nrx0<=boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[j]) {
+			if(nrx0<=boardingLinkModel.getNrPassengerBoard().get(rId).get(alightingLinkModel.getLink().getLink().getId())[j]) {
 				tAfter = j;
 				break;
 			}
 		}
-		double tBeforedt = 1/boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tBefore]*nrx0dt;
-		RealVector dtBefore = dnrx0.mapMultiply(1/boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tBefore]);
+		double tBeforedt = 1/boardingLinkModel.getNrPassengerBoard().get(rId).get(alightingLinkModel.getLink().getLink().getId())[tBefore]*nrx0dt;
+		RealVector dtBefore = dnrx0.mapMultiply(1/boardingLinkModel.getNrPassengerBoard().get(rId).get(alightingLinkModel.getLink().getLink().getId())[tBefore]);
 		
-		double tAfterdt = 1/boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tAfter]*nrx0dt;
-		RealVector dtAfter = dnrx0.mapMultiply(1/boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tAfter]);
+		double tAfterdt = 1/boardingLinkModel.getNrPassengerBoard().get(rId).get(alightingLinkModel.getLink().getLink().getId())[tAfter]*nrx0dt;
+		RealVector dtAfter = dnrx0.mapMultiply(1/boardingLinkModel.getNrPassengerBoard().get(rId).get(alightingLinkModel.getLink().getLink().getId())[tAfter]);
 		double t = 0;
 		double tdt = 0;
 		double[] dt = null;
 		if(tBefore!=tAfter) {
 		
-			Tuple<Double,double[]>dtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<Double,Double>(boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tBefore],boardingLinkModel.getNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tAfter]),
+			Tuple<Double,double[]>dtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<Double,Double>(boardingLinkModel.getNrPassengerBoard().get(rId).get(alightingLinkModel.getLink().getLink().getId())[tBefore],boardingLinkModel.getNrPassengerBoard().get(rId).get(alightingLinkModel.getLink().getLink().getId())[tAfter]),
 					new Tuple<Double,Double>((double)tBefore,(double)tAfter), 
-					new Tuple<double[],double[]>(boardingLinkModel.getdNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tBefore],boardingLinkModel.getdNrPassengerBoard().get(r).get(alightingLinkModel.getLink().getLink().getId())[tAfter]),
+					new Tuple<double[],double[]>(boardingLinkModel.getdNrPassengerBoard().get(rId).get(alightingLinkModel.getLink().getLink().getId())[tBefore],boardingLinkModel.getdNrPassengerBoard().get(rId).get(alightingLinkModel.getLink().getLink().getId())[tAfter]),
 					new Tuple<double[],double[]>(dtBefore.getData(),dtAfter.getData()), nrx0, dnrx0.getData());
 			
-			Tuple<Double,double[]>tdtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>(alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tBefore],alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tAfter]),
+			Tuple<Double,double[]>tdtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>(alightingLinkModel.getNrPassengerAlight().get(rId).get(boardingLinkModel.getLink().getLink().getId())[tBefore],alightingLinkModel.getNrPassengerAlight().get(rId).get(boardingLinkModel.getLink().getLink().getId())[tAfter]),
 					new Tuple<Double,Double>((double)tBefore,(double)tAfter), 
-					new Tuple<double[],double[]>(new double[] {boardingLinkModel.getNrPassengerBoarddt().get(r).get(alightingLinkModel.getLink().getLink().getId())[tBefore]},new double[] {boardingLinkModel.getNrPassengerBoarddt().get(r).get(alightingLinkModel.getLink().getLink().getId())[tAfter]}),
+					new Tuple<double[],double[]>(new double[] {boardingLinkModel.getNrPassengerBoarddt().get(rId).get(alightingLinkModel.getLink().getLink().getId())[tBefore]},new double[] {boardingLinkModel.getNrPassengerBoarddt().get(rId).get(alightingLinkModel.getLink().getLink().getId())[tAfter]}),
 					new Tuple<double[],double[]>(new double[] {tBeforedt},new double[] {tAfterdt}), nrx0, new double[] {nrx0dt});
 			
 			t = dtTuple.getFirst();
@@ -587,33 +596,33 @@ public class LTMUtils{
 		int tAfter = timeStepBefore;
 		
 		for(int j = timeStepBefore;j<timePoints.length;j++) {
-			if(nrx0>=alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[j]) {
+			if(nrx0>=alightingLinkModel.getNrPassengerAlight().get(rId).get(boardingLinkModel.getLink().getLink().getId())[j]) {
 				tBefore = j;
 				
 			}
-			if(nrx0<=alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[j]) {
+			if(nrx0<=alightingLinkModel.getNrPassengerAlight().get(rId).get(boardingLinkModel.getLink().getLink().getId())[j]) {
 				tAfter = j;
 				break;
 			}
 		}
-		double tBeforedt = 1/alightingLinkModel.getNrPassengerAlightdt().get(r).get(boardingLinkModel.getLink().getLink().getId())[tBefore]*nrx0dt;
-		RealVector dtBefore = dnrx0.mapMultiply(1/alightingLinkModel.getNrPassengerAlightdt().get(r).get(boardingLinkModel.getLink().getLink().getId())[tBefore]);
+		double tBeforedt = 1/alightingLinkModel.getNrPassengerAlightdt().get(rId).get(boardingLinkModel.getLink().getLink().getId())[tBefore]*nrx0dt;
+		RealVector dtBefore = dnrx0.mapMultiply(1/alightingLinkModel.getNrPassengerAlightdt().get(rId).get(boardingLinkModel.getLink().getLink().getId())[tBefore]);
 		
-		double tAfterdt = 1/alightingLinkModel.getNrPassengerAlightdt().get(r).get(boardingLinkModel.getLink().getLink().getId())[tAfter]*nrx0dt;
-		RealVector dtAfter = dnrx0.mapMultiply(1/alightingLinkModel.getNrPassengerAlightdt().get(r).get(boardingLinkModel.getLink().getLink().getId())[tAfter]);
+		double tAfterdt = 1/alightingLinkModel.getNrPassengerAlightdt().get(rId).get(boardingLinkModel.getLink().getLink().getId())[tAfter]*nrx0dt;
+		RealVector dtAfter = dnrx0.mapMultiply(1/alightingLinkModel.getNrPassengerAlightdt().get(rId).get(boardingLinkModel.getLink().getLink().getId())[tAfter]);
 		double t = 0;
 		double tdt = 0;
 		double[] dt = null;
 		if(tBefore!=tAfter) {
 		
-			Tuple<Double,double[]>dtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<Double,Double>(alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tBefore],alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tAfter]),
+			Tuple<Double,double[]>dtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<Double,Double>(alightingLinkModel.getNrPassengerAlight().get(rId).get(boardingLinkModel.getLink().getLink().getId())[tBefore],alightingLinkModel.getNrPassengerAlight().get(rId).get(boardingLinkModel.getLink().getLink().getId())[tAfter]),
 					new Tuple<Double,Double>((double)tBefore,(double)tAfter), 
-					new Tuple<double[],double[]>(alightingLinkModel.getdNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tBefore],alightingLinkModel.getdNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tAfter]),
+					new Tuple<double[],double[]>(alightingLinkModel.getdNrPassengerAlight().get(rId).get(boardingLinkModel.getLink().getLink().getId())[tBefore],alightingLinkModel.getdNrPassengerAlight().get(rId).get(boardingLinkModel.getLink().getLink().getId())[tAfter]),
 					new Tuple<double[],double[]>(dtBefore.getData(),dtAfter.getData()), nrx0, dnrx0.getData());
 			
-			Tuple<Double,double[]>tdtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>(alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tBefore],alightingLinkModel.getNrPassengerAlight().get(r).get(boardingLinkModel.getLink().getLink().getId())[tAfter]),
+			Tuple<Double,double[]>tdtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>(alightingLinkModel.getNrPassengerAlight().get(rId).get(boardingLinkModel.getLink().getLink().getId())[tBefore],alightingLinkModel.getNrPassengerAlight().get(rId).get(boardingLinkModel.getLink().getLink().getId())[tAfter]),
 					new Tuple<Double,Double>((double)tBefore,(double)tAfter), 
-					new Tuple<double[],double[]>(new double[] {alightingLinkModel.getNrPassengerAlightdt().get(r).get(boardingLinkModel.getLink().getLink().getId())[tBefore]},new double[] {alightingLinkModel.getNrPassengerAlightdt().get(r).get(boardingLinkModel.getLink().getLink().getId())[tAfter]}),
+					new Tuple<double[],double[]>(new double[] {alightingLinkModel.getNrPassengerAlightdt().get(rId).get(boardingLinkModel.getLink().getLink().getId())[tBefore]},new double[] {alightingLinkModel.getNrPassengerAlightdt().get(rId).get(boardingLinkModel.getLink().getLink().getId())[tAfter]}),
 					new Tuple<double[],double[]>(new double[] {tBeforedt},new double[] {tAfterdt}), nrx0, new double[] {nrx0dt});
 			
 			t = dtTuple.getFirst();
@@ -719,13 +728,15 @@ public class LTMUtils{
 	 * Entry 
 	 * @return
 	 */
-	public static TuplesOfThree<double[],double[],double[][]> getRouteSpecificCumulativeLinkVolume(NetworkRoute r, LinkModel link, double[] timePoints){
+	public static TuplesOfThree<double[],double[],double[][]> getRouteSpecificCumulativeLinkVolume(Tuple<Id<NetworkRoute>,NetworkRoute> rElement, LinkModel link, double[] timePoints){
+		Id<NetworkRoute>rId = rElement.getFirst();
+		NetworkRoute r = rElement.getSecond();
 		
 		double[] volume = new double[timePoints.length];
 		double[] volumedt = new double[timePoints.length];
 		double[][] dVolume = new double[timePoints.length][link.getVariables().getKeySet().size()];
 		
-		int routeIdx = link.getRoutes().getIndex(r);
+		int routeIdx = link.getRouteIds().getIndex(rId);
 		
 		for(int i = 0;i<timePoints.length;i++) {
 			if(i>0) {
@@ -825,8 +836,8 @@ public class LTMUtils{
 		return c;
 	}
 	
-	public static Map<NetworkRoute,double[]> processTransitPassengerCapacity(Map<String,Map<NetworkRoute,Double>> capacity, Map<String,Tuple<Double,Double>> demandTimeBean, double[] ltmTimeSteps){
-		Map<NetworkRoute,double[]> out = new HashMap<>();
+	public static Map<Id<NetworkRoute>,double[]> processTransitPassengerCapacity(Map<String,Map<Id<NetworkRoute>,Double>> capacity, Map<String,Tuple<Double,Double>> demandTimeBean, double[] ltmTimeSteps){
+		Map<Id<NetworkRoute>,double[]> out = new HashMap<>();
 		capacity.entrySet().forEach(c->{
 			c.getValue().entrySet().forEach(r->{
 				if(!out.containsKey(r.getKey()))out.put(r.getKey(), new double[ltmTimeSteps.length]);
@@ -844,11 +855,11 @@ public class LTMUtils{
 	}
 	
 	
-	public static TuplesOfThree<Map<Id<Link>,double[]>,Map<Id<Link>,double[]>,Map<Id<Link>,double[][]>> generatePassengerDemand(LTMLoadableDemandV2 demand,NetworkRoute r, Id<Link> fromLink, double[] ltmTimeSteps){
+	public static TuplesOfThree<Map<Id<Link>,double[]>,Map<Id<Link>,double[]>,Map<Id<Link>,double[][]>> generatePassengerDemand(LTMLoadableDemandV2 demand,Id<NetworkRoute> rId, Id<Link> fromLink, double[] ltmTimeSteps){
 		Map<Id<Link>,double[]> q = new HashMap<>();
 		Map<Id<Link>,double[][]> dq = new HashMap<>();
 		Map<Id<Link>,double[]> qdt = new HashMap<>();
-		for(Entry<String, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>>> time:demand.getTransitTravelTimeQuery().get(r).entrySet()) {
+		for(Entry<String, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>>> time:demand.getTransitTravelTimeQuery().get(rId).entrySet()) {
 			for(int i = 0;i<ltmTimeSteps.length;i++) {
 				double t = ltmTimeSteps[i];
 				if(t==0)t=1;
