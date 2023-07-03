@@ -71,7 +71,7 @@ public class ODDifferentiableLTMModelTest {
 		});
 		
 		Config config = ConfigGenerator.generateToyConfig();
-		ConfigUtils.loadConfig("toyScenarioData/output_config.xml");
+		//ConfigUtils.loadConfig("toyScenarioData/output_config.xml");
 		config.transit().setTransitScheduleFile("toyScenarioData/transitSchedule.xml");
 		config.transit().setVehiclesFile("toyScenarioData/transitVehicles.xml");
 		

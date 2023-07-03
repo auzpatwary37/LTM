@@ -304,11 +304,11 @@
 			</routeProfile>
 			<route>
 				<link refId="4r_4_stop_train"/>
-				<link refId="4_6r"/>
+				<link refId="4_6r_MTR"/>
 				<link refId="6r_6_stop_train"/>
-				<link refId="6_5r"/>
+				<link refId="6_5r_MTR"/>
 				<link refId="5r_5_stop_train"/>
-				<link refId="5_1r"/>
+				<link refId="5_1r_MTR"/>
 				<link refId="1r_1_stop_train"/>
 			</route>
 			<departures>
@@ -770,13 +770,13 @@
 			</routeProfile>
 			<route>
 				<link refId="3r_3_stop_train"/>
-				<link refId="3_6r"/>
+				<link refId="3_6r_MTR"/>
 				<link refId="6r_6_stop_train"/>
-				<link refId="6_7r"/>
+				<link refId="6_7r_MTR"/>
 				<link refId="7r_7_stop_train"/>
-				<link refId="7_5r"/>
+				<link refId="7_5r_MTR"/>
 				<link refId="5r_5_stop_train"/>
-				<link refId="5_2r"/>
+				<link refId="5_2r_MTR"/>
 				<link refId="2r_2_stop_train"/>
 			</route>
 			<departures>

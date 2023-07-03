@@ -49,18 +49,18 @@ public interface DNL {
 
 	
 	
-	public Map<NetworkRoute, Map<String, Tuple<Double,double[]>>> getTimeBeanRouteTravelTime(int numberOfPointToAverage);
+	public Map<Id<NetworkRoute>, Map<String, Tuple<Double, double[]>>> getTimeBeanRouteTravelTime(int numberOfPointToAverage);
 
 
-	public Map<NetworkRoute, Map<Integer, Tuple<Double,double[]>>> getTimeStampedRouteTravelTime();
+	public Map<Id<NetworkRoute>, Map<Integer, Tuple<Double,double[]>>> getTimeStampedRouteTravelTime();
 	
-	public Map<NetworkRoute, Map<String, Map<String, Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>>>>> getTimeBeanTransitTravelAndWaitingTime(int numberOfTimePointsToAverage);
+	public Map<Id<NetworkRoute>, Map<String, Map<String, Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>>>>> getTimeBeanTransitTravelAndWaitingTime(int numberOfTimePointsToAverage);
 
 
 	public void simulateTransit();
 
 
-	public Map<NetworkRoute, Map<Integer, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>>>>> getTimeStampedTransitTravelAndWaitingTime();
+	public Map<Id<NetworkRoute>, Map<Integer, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Tuple<Double, double[]>, Tuple<Double, double[]>>>>> getTimeStampedTransitTravelAndWaitingTime();
 
 	public void reSimulateTransit();
 

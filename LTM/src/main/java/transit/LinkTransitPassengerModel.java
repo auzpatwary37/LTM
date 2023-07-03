@@ -33,41 +33,42 @@ public class LinkTransitPassengerModel {
 	private MapToArray<VariableDetails> variables;
 	private Map<Id<Link>,LinkTransitPassengerModel> linkTransitPassengerMap = new HashMap<>();// this is the map containing all the link transit passenger objects for all the 
 	private LinkModel link;// the corresponding link model. 
-	private MapToArray<NetworkRoute> routes;// routes going through this link
-	private Map<NetworkRoute, double[]> capacity;//for each route and each time step
-	private Map<NetworkRoute, double[][]> dcapacity;//for each route and each time step
-	private Map<NetworkRoute, double[]> capacitydt;//for each route and each time step
+	private MapToArray<Id<NetworkRoute>> routeIds;// routes going through this link
+	private Map<Id<NetworkRoute>, double[]> capacity;//for each route and each time step
+	private Map<Id<NetworkRoute>, double[][]> dcapacity;//for each route and each time step
+	private Map<Id<NetworkRoute>, double[]> capacitydt;//for each route and each time step
 	
-	private Map<NetworkRoute,double[]> vehicleCapacity = new HashMap<>();
+	private Map<Id<NetworkRoute>,NetworkRoute>routes = new HashMap<>(); 
+	private Map<Id<NetworkRoute>,double[]> vehicleCapacity = new HashMap<>();
 	
-	private BiMap<String,NetworkRoute> transitLine_routeToNetworkRouteMap = HashBiMap.create();
+	private BiMap<String,Id<NetworkRoute>> transitLine_routeToNetworkRouteMap = HashBiMap.create();
 	
-	private Map<NetworkRoute,Map<Id<Link>,Map<Id<Link>,double[]>>> onBoardPassengerX0 = new HashMap<>();
-	private Map<NetworkRoute,Map<Id<Link>,Map<Id<Link>,double[][]>>> dOnBoardPassengerX0 = new HashMap<>();
-	private Map<NetworkRoute,Map<Id<Link>,Map<Id<Link>,double[]>>> onBoardPassengerX0dt = new HashMap<>();
-	private Map<NetworkRoute,Map<Id<Link>,Map<Id<Link>,double[]>>> onBoardPassengerXL = new HashMap<>();
-	private Map<NetworkRoute,Map<Id<Link>,Map<Id<Link>,double[][]>>> dOnBoardPassengerXL = new HashMap<>();
-	private Map<NetworkRoute,Map<Id<Link>,Map<Id<Link>,double[]>>> onBoardPassengerXLdt = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,Map<Id<Link>,double[]>>> onBoardPassengerX0 = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,Map<Id<Link>,double[][]>>> dOnBoardPassengerX0 = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,Map<Id<Link>,double[]>>> onBoardPassengerX0dt = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,Map<Id<Link>,double[]>>> onBoardPassengerXL = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,Map<Id<Link>,double[][]>>> dOnBoardPassengerXL = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,Map<Id<Link>,double[]>>> onBoardPassengerXLdt = new HashMap<>();
 	
-	private Map<NetworkRoute,Map<Id<Link>,double[]>> NrPassengerAlight = new HashMap<>();
-	private Map<NetworkRoute,Map<Id<Link>,double[][]>> dNrPassengerAlight = new HashMap<>();
-	private Map<NetworkRoute,Map<Id<Link>,double[]>> NrPassengerAlightdt = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,double[]>> NrPassengerAlight = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,double[][]>> dNrPassengerAlight = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,double[]>> NrPassengerAlightdt = new HashMap<>();
 	
-	private Map<NetworkRoute,Map<Id<Link>,double[]>> NrPassengerBoard = new HashMap<>();
-	private Map<NetworkRoute,Map<Id<Link>,double[][]>> dNrPassengerBoard = new HashMap<>();
-	private Map<NetworkRoute,Map<Id<Link>,double[]>> NrPassengerBoarddt = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,double[]>> NrPassengerBoard = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,double[][]>> dNrPassengerBoard = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,double[]>> NrPassengerBoarddt = new HashMap<>();
 	
-	private Map<NetworkRoute,Map<Id<Link>,double[]>> demandPassenger = new HashMap<>();
-	private Map<NetworkRoute,Map<Id<Link>,double[][]>> dDemandPassenger = new HashMap<>();
-	private Map<NetworkRoute,Map<Id<Link>,double[]>> demandPassengerdt = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,double[]>> demandPassenger = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,double[][]>> dDemandPassenger = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,double[]>> demandPassengerdt = new HashMap<>();
 	
-	private Map<NetworkRoute,Map<Id<Link>,double[]>>cumulativeDemandPassenger = new HashMap<>();
-	private Map<NetworkRoute,Map<Id<Link>,double[][]>>dcumulativeDemandPassenger = new HashMap<>();
-	private Map<NetworkRoute,Map<Id<Link>,double[]>>cumulativeDemandPassengerdt = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,double[]>>cumulativeDemandPassenger = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,double[][]>>dcumulativeDemandPassenger = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,double[]>>cumulativeDemandPassengerdt = new HashMap<>();
 	
-	private Map<NetworkRoute,Map<Id<Link>,double[]>> queuedPassenger = new HashMap<>();
-	private Map<NetworkRoute,Map<Id<Link>,double[][]>> dQueuedPassenger = new HashMap<>();
-	private Map<NetworkRoute,Map<Id<Link>,double[]>> queuedPassengerdt = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,double[]>> queuedPassenger = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,double[][]>> dQueuedPassenger = new HashMap<>();
+	private Map<Id<NetworkRoute>,Map<Id<Link>,double[]>> queuedPassengerdt = new HashMap<>();
 	
 	public LinkTransitPassengerModel(LinkModel link, Map<Id<Link>,LinkTransitPassengerModel> ltpMap) {
 		this.link = link;
@@ -80,21 +81,23 @@ public class LinkTransitPassengerModel {
 	
 	
 	
-	public void addRoute(NetworkRoute r, Id<TransitLine> tlId, Id<TransitRoute> trId, double[] vehicleCapacity) {
-		this.transitLine_routeToNetworkRouteMap.put(tlId.toString()+"___"+trId.toString(),r);
-		this.vehicleCapacity.put(r, vehicleCapacity);
+	public void addRoute(Id<NetworkRoute> rId,NetworkRoute r, Id<TransitLine> tlId, Id<TransitRoute> trId, double[] vehicleCapacity) {
+		this.transitLine_routeToNetworkRouteMap.put(tlId.toString()+"___"+trId.toString(),rId);
+		this.routes.put(rId, r);
+		this.vehicleCapacity.put(rId, vehicleCapacity);
 	}
-	public void addRoute(NetworkRoute r, double[] vehicleCapacity, Map<Id<Link>,double[]>demand, Map<Id<Link>,double[][]>ddemand, Map<Id<Link>,double[]>demanddt) {
+	public void addRoute(Id<NetworkRoute> rId,NetworkRoute r, double[] vehicleCapacity, Map<Id<Link>,double[]>demand, Map<Id<Link>,double[][]>ddemand, Map<Id<Link>,double[]>demanddt) {
 		//this.transitLine_routeToNetworkRouteMap.put(tlId.toString()+"___"+trId.toString(),r);
-		this.vehicleCapacity.put(r, vehicleCapacity);
-		this.demandPassenger.put(r,demand);
-		this.dDemandPassenger.put(r,ddemand);
-		this.demandPassengerdt.put(r,demanddt);
+		this.routes.put(rId, r);
+		this.vehicleCapacity.put(rId, vehicleCapacity);
+		this.demandPassenger.put(rId,demand);
+		this.dDemandPassenger.put(rId,ddemand);
+		this.demandPassengerdt.put(rId,demanddt);
 		this.calcCumulativeDemand();
 		
 	}
 	public void calcCumulativeDemand() {
-		for(Entry<NetworkRoute, Map<Id<Link>, double[]>> d:this.demandPassenger.entrySet()) {
+		for(Entry<Id<NetworkRoute>, Map<Id<Link>, double[]>> d:this.demandPassenger.entrySet()) {
 			this.cumulativeDemandPassenger.put(d.getKey(), new HashMap<>());
 			this.dcumulativeDemandPassenger.put(d.getKey(), new HashMap<>());
 			this.cumulativeDemandPassengerdt.put(d.getKey(), new HashMap<>());
@@ -119,8 +122,8 @@ public class LinkTransitPassengerModel {
 	}
 	
 	public void performInitialSetup() {
-		this.routes = new MapToArray<NetworkRoute>("transit routes on link",this.transitLine_routeToNetworkRouteMap.values());
-		for(NetworkRoute r:this.routes.getKeySet()) {
+		this.routeIds = new MapToArray<Id<NetworkRoute>>("transit routes on link",this.routes.keySet());
+		for(Id<NetworkRoute> r:this.routes.keySet()) {
 			this.capacity.put(r, new double[T]);
 			this.dcapacity.put(r, new double[T][this.variables.getKeySet().size()]);
 			this.capacitydt.put(r, new double[T]);
@@ -147,7 +150,7 @@ public class LinkTransitPassengerModel {
 			this.onBoardPassengerXLdt.put(r, new HashMap<>());
 			this.dOnBoardPassengerXL.put(r, new HashMap<>());
 			
-			int rInd = this.link.getRoutes().getIndex(r);
+			int rInd = this.link.getRouteIds().getIndex(r);
 			
 			for(int i = 0;i<this.timeSteps.length;i++) {
 				this.capacity.get(r)[i] = (this.link.getNrxl()[rInd][i]-this.link.getNrx0()[rInd][i])*vehicleCapacity.get(r)[i];
@@ -165,9 +168,9 @@ public class LinkTransitPassengerModel {
 	public void updateFlow(int timeId) {
 		
 		
-		for(NetworkRoute r:this.routes.getKeySet()) {
+		for(Id<NetworkRoute> r:this.routes.keySet()) {
 			
-			LinkTransitPassengerModel previousLink = this.linkTransitPassengerMap.get(findThePreviousLinkId(link.getLink().getId(),r));
+			LinkTransitPassengerModel previousLink = this.linkTransitPassengerMap.get(findThePreviousLinkId(link.getLink().getId(),this.routes.get(r)));
 			
 			// First calculate the supply gradient
 			double onBoard = 0;
@@ -300,7 +303,7 @@ public class LinkTransitPassengerModel {
 			
 			
 			// here we update the flow from the front of the link to the end of the link
-			int rInd = this.link.getRoutes().getIndex(r);
+			int rInd = this.link.getRouteIds().getIndex(r);
 			double flow = this.link.getNrxl()[rInd][timeId+1];
 			int tBefore = timeId;
 			int tAfter = timeId;
@@ -416,124 +419,128 @@ public class LinkTransitPassengerModel {
 		return link;
 	}
 
-	public MapToArray<NetworkRoute> getRoutes() {
+	public Map<Id<NetworkRoute>, NetworkRoute> getRoutes() {
 		return routes;
 	}
+	
+	public MapToArray<Id<NetworkRoute>> getRouteIds(){
+		return this.routeIds;
+	}
 
-	public Map<NetworkRoute, double[]> getCapacity() {
+	public Map<Id<NetworkRoute>, double[]> getCapacity() {
 		return capacity;
 	}
 
-	public Map<NetworkRoute, double[][]> getDcapacity() {
+	public Map<Id<NetworkRoute>, double[][]> getDcapacity() {
 		return dcapacity;
 	}
 
-	public Map<NetworkRoute, double[]> getCapacitydt() {
+	public Map<Id<NetworkRoute>, double[]> getCapacitydt() {
 		return capacitydt;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, Map<Id<Link>, double[]>>> getOnBoardPassengerX0() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, Map<Id<Link>, double[]>>> getOnBoardPassengerX0() {
 		return onBoardPassengerX0;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, Map<Id<Link>, double[][]>>> getdOnBoardPassengerX0() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, Map<Id<Link>, double[][]>>> getdOnBoardPassengerX0() {
 		return dOnBoardPassengerX0;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, Map<Id<Link>, double[]>>> getOnBoardPassengerX0dt() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, Map<Id<Link>, double[]>>> getOnBoardPassengerX0dt() {
 		return onBoardPassengerX0dt;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, Map<Id<Link>, double[]>>> getOnBoardPassengerXL() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, Map<Id<Link>, double[]>>> getOnBoardPassengerXL() {
 		return onBoardPassengerXL;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, Map<Id<Link>, double[][]>>> getdOnBoardPassengerXL() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, Map<Id<Link>, double[][]>>> getdOnBoardPassengerXL() {
 		return dOnBoardPassengerXL;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, Map<Id<Link>, double[]>>> getOnBoardPassengerXLdt() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, Map<Id<Link>, double[]>>> getOnBoardPassengerXLdt() {
 		return onBoardPassengerXLdt;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, double[]>> getNrPassengerAlight() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, double[]>> getNrPassengerAlight() {
 		return NrPassengerAlight;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, double[][]>> getdNrPassengerAlight() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, double[][]>> getdNrPassengerAlight() {
 		return dNrPassengerAlight;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, double[]>> getNrPassengerAlightdt() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, double[]>> getNrPassengerAlightdt() {
 		return NrPassengerAlightdt;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, double[]>> getNrPassengerBoard() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, double[]>> getNrPassengerBoard() {
 		return NrPassengerBoard;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, double[][]>> getdNrPassengerBoard() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, double[][]>> getdNrPassengerBoard() {
 		return dNrPassengerBoard;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, double[]>> getNrPassengerBoarddt() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, double[]>> getNrPassengerBoarddt() {
 		return NrPassengerBoarddt;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, double[]>> getDemandPassenger() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, double[]>> getDemandPassenger() {
 		return demandPassenger;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, double[][]>> getdDemandPassenger() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, double[][]>> getdDemandPassenger() {
 		return dDemandPassenger;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, double[]>> getQueuedPassenger() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, double[]>> getQueuedPassenger() {
 		return queuedPassenger;
 	}
 
-	public Map<NetworkRoute, Map<Id<Link>, double[][]>> getdQueuedPassenger() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, double[][]>> getdQueuedPassenger() {
 		return dQueuedPassenger;
 	}
 
-	public void setDemandPassenger(Map<NetworkRoute, Map<Id<Link>, double[]>> demandPassenger) {
+	public void setDemandPassenger(Map<Id<NetworkRoute>, Map<Id<Link>, double[]>> demandPassenger) {
 		this.demandPassenger = demandPassenger;
 		
 	}
 
 
 
-	public Map<NetworkRoute, Map<Id<Link>, double[]>> getDemandPassengerdt() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, double[]>> getDemandPassengerdt() {
 		return demandPassengerdt;
 	}
 
 
 
-	public void setDemandPassengerdt(Map<NetworkRoute, Map<Id<Link>, double[]>> demandPassengerdt) {
+	public void setDemandPassengerdt(Map<Id<NetworkRoute>, Map<Id<Link>, double[]>> demandPassengerdt) {
 		this.demandPassengerdt = demandPassengerdt;
 	}
 
 
 
-	public void setdDemandPassenger(Map<NetworkRoute, Map<Id<Link>, double[][]>> dDemandPassenger) {
+	public void setdDemandPassenger(Map<Id<NetworkRoute>, Map<Id<Link>, double[][]>> dDemandPassenger) {
 		this.dDemandPassenger = dDemandPassenger;
 	}
 
 
 
-	public Map<NetworkRoute, Map<Id<Link>, double[]>> getCumulativeDemandPassenger() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, double[]>> getCumulativeDemandPassenger() {
 		return cumulativeDemandPassenger;
 	}
 
 
 
-	public Map<NetworkRoute, Map<Id<Link>, double[][]>> getDcumulativeDemandPassenger() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, double[][]>> getDcumulativeDemandPassenger() {
 		return dcumulativeDemandPassenger;
 	}
 
 
 
-	public Map<NetworkRoute, Map<Id<Link>, double[]>> getCumulativeDemandPassengerdt() {
+	public Map<Id<NetworkRoute>, Map<Id<Link>, double[]>> getCumulativeDemandPassengerdt() {
 		return cumulativeDemandPassengerdt;
 	}
 	

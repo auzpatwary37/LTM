@@ -1,9 +1,9 @@
 package nodeModels;
 
-import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.math.linear.MatrixUtils;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.utils.collections.Tuple;
@@ -19,6 +19,7 @@ public class DestinationNodeModel{
 
 	private Node dummyNode;
 	private Node actualNode;
+	private Id<NetworkRoute>rId;
 	private NetworkRoute r;
 	private int T;
 	private LinkModel inLinkModel;
@@ -36,13 +37,14 @@ public class DestinationNodeModel{
 	private MapToArray<VariableDetails> variables;
 
 	
-	public DestinationNodeModel(NetworkRoute r,NodeModel originalNodeModel, double[] LTMTimePoints, MapToArray<VariableDetails> variables) {
+	public DestinationNodeModel(Id<NetworkRoute>rId,NetworkRoute r,NodeModel originalNodeModel, double[] LTMTimePoints, MapToArray<VariableDetails> variables) {
 		this.actualNode = originalNodeModel.getNode();
 		this.variables =variables;
 		this.r = r;
-		this.dummyNode = LTMUtils.createDummyNode(this.actualNode, false, r);
-		this.inLinkModel = new GenericLinkModel(LTMUtils.createDummyLink(dummyNode, actualNode, r, false));
-		this.inLinkModel.setLTMTimeBeanAndRouteSet(LTMTimePoints, new MapToArray<NetworkRoute>("OriginForRoute",List.of(r)));
+		this.rId = rId;
+		this.dummyNode = LTMUtils.createDummyNode(this.actualNode, false, rId);
+		this.inLinkModel = new GenericLinkModel(LTMUtils.createDummyLink(dummyNode, actualNode, rId, false));
+		this.inLinkModel.setLTMTimeBeanAndRouteSet(LTMTimePoints, Map.of(rId,r));
 		if(variables!=null)this.inLinkModel.setOptimizationVariables(variables);
 		originalNodeModel.addDestinationNode(this);
 		this.T = LTMTimePoints.length;
@@ -92,9 +94,9 @@ public class DestinationNodeModel{
 	}
 
 	
-	public NetworkRoute getRoute() {
+	public Tuple<Id<NetworkRoute>,NetworkRoute> getRoute() {
 		
-		return r;
+		return new Tuple<Id<NetworkRoute>,NetworkRoute>(rId,r);
 	}
 
 	public LinkModel getInLinkModel() {

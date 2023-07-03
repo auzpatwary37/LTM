@@ -6,6 +6,7 @@ import org.matsim.api.core.v01.network.Node;
 import org.matsim.core.population.routes.NetworkRoute;
 
 import utils.MapToArray;
+import utils.VariableDetails;
 
 
 public interface NodeModel {
@@ -74,5 +75,7 @@ public interface NodeModel {
 	public void addDestinationNode(DestinationNodeModel node);
 	
 	public void reset();
+
+	public void setOptimizationVariables(MapToArray<VariableDetails> variables);
 	
 }

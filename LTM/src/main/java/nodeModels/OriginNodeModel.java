@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.math.linear.MatrixUtils;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Node;
 import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.utils.collections.Tuple;
@@ -19,6 +20,7 @@ public class OriginNodeModel{
 	private Node dummyNode;
 	private Node actualNode;
 	private NetworkRoute r;
+	private Id<NetworkRoute> rId;
 	private int T;
 	private LinkModel outLinkModel;
 	private double[] LTMTimePoints;
@@ -42,16 +44,17 @@ public class OriginNodeModel{
 	private Map<Integer,Tuple<Double,double[]>>eDemand = null;
 	
 	
-	public OriginNodeModel(NetworkRoute r,NodeModel originalNodeModel,Map<String,Tuple<Double,Double>> demandTimeBean, 
+	public OriginNodeModel(Id<NetworkRoute> rId, NetworkRoute r,NodeModel originalNodeModel,Map<String,Tuple<Double,Double>> demandTimeBean, 
 			Map<String,Tuple<Double,double[]>>demand, double[] LTMTimePoints, MapToArray<VariableDetails> variables) {
 		this.demand =demand;
 		this.demandTimeBean = demandTimeBean;
 		this.actualNode = originalNodeModel.getNode();
 		this.variables =variables;
 		this.r = r;
-		this.dummyNode = LTMUtils.createDummyNode(this.actualNode, true, r);
-		this.outLinkModel = new GenericLinkModel(LTMUtils.createDummyLink(dummyNode, actualNode, r, true));
-		this.outLinkModel.setLTMTimeBeanAndRouteSet(LTMTimePoints, new MapToArray<NetworkRoute>("OriginForRoute",List.of(r)));
+		this.rId = rId;
+		this.dummyNode = LTMUtils.createDummyNode(this.actualNode, true, rId);
+		this.outLinkModel = new GenericLinkModel(LTMUtils.createDummyLink(dummyNode, actualNode, rId, true));
+		this.outLinkModel.setLTMTimeBeanAndRouteSet(LTMTimePoints, Map.of(rId, r));
 		if(variables!=null)this.outLinkModel.setOptimizationVariables(variables);
 		originalNodeModel.addOriginNode(this);
 		this.T = LTMTimePoints.length;
@@ -68,15 +71,16 @@ public class OriginNodeModel{
 	 * @param LTMTimePoints
 	 * @param variables
 	 */
-	public OriginNodeModel(NetworkRoute r,NodeModel originalNodeModel,
+	public OriginNodeModel(Id<NetworkRoute> rId, NetworkRoute r,NodeModel originalNodeModel,
 			Map<Integer,Tuple<Double,double[]>>demand, double[] LTMTimePoints, MapToArray<VariableDetails> variables) {
 		this.eDemand =demand;
 		this.actualNode = originalNodeModel.getNode();
 		this.variables =variables;
 		this.r = r;
-		this.dummyNode = LTMUtils.createDummyNode(this.actualNode, true, r);
-		this.outLinkModel = new GenericLinkModel(LTMUtils.createDummyLink(dummyNode, actualNode, r, true));
-		this.outLinkModel.setLTMTimeBeanAndRouteSet(LTMTimePoints, new MapToArray<NetworkRoute>("OriginForRoute",List.of(r)));
+		this.rId = rId;
+		this.dummyNode = LTMUtils.createDummyNode(this.actualNode, true, rId);
+		this.outLinkModel = new GenericLinkModel(LTMUtils.createDummyLink(dummyNode, actualNode, rId, true));
+		this.outLinkModel.setLTMTimeBeanAndRouteSet(LTMTimePoints, Map.of(rId,r));
 		if(variables!=null)this.outLinkModel.setOptimizationVariables(variables);
 		originalNodeModel.addOriginNode(this);
 		this.T = LTMTimePoints.length;
@@ -136,8 +140,8 @@ public class OriginNodeModel{
 	}
 
 
-	public NetworkRoute getRoute() {
-		return r;
+	public Tuple<Id<NetworkRoute>,NetworkRoute> getRoute() {
+		return new Tuple<>(rId,r);
 	}
 	public Map<String, Tuple<Double, double[]>> getDemand() {
 		return demand;
