@@ -97,8 +97,8 @@ public class GenericLinkModel implements LinkModel{
 
 	@Override
 	public int getTimeIndex(double t) {
-		for(int i = 0; i<timePoints.length;i++) {
-			if(t>=timePoints[i])return i-1;
+		for(int i = timePoints.length-1; i>=0;i--) {
+			if(t>=timePoints[i])return i;
 		}
 		return 0;
 	}
@@ -106,9 +106,11 @@ public class GenericLinkModel implements LinkModel{
 
 	@Override
 	public TuplesOfThree<double[],double[],double[][]> getSendingFlow(int timeIdx) {
-		
+			if(fd.L/fd.vf>delT) {
+				throw new IllegalArgumentException("Reduce time step size!!! L/vf is greater than time step size!!!");
+			}
 			double t = timePoints[timeIdx]+delT-fd.L/fd.vf;// get the time index which flow is relevant
-			int tl = this.getTimeIndex(t);// get the time point which is just lower that t
+			int tl = this.getTimeIndex(t);// get the time point which is just lower than or equal to t
 			double N = 0;
 			double s = 0;
 			if(this.variables!=null) {

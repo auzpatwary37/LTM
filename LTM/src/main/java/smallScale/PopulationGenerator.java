@@ -1,5 +1,9 @@
 package smallScale;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
@@ -14,6 +18,7 @@ import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup.ActivityParams;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
+import org.matsim.vehicles.VehicleUtils;
 import org.matsim.vehicles.Vehicles;
 import org.matsim.vehicles.VehiclesFactory;
 
@@ -37,26 +42,26 @@ public class PopulationGenerator {
 		int popPerOD=popNo/4;
 		for(int i=0;i<popPerOD;i++) {
 			rand=1800*Math.random()-1800*Math.random();
-			createOnePerson(scenario,scenario.getPopulation(),vt1,i,network.getLinks().get(Id.createLinkId("1_1r_stop")),
-					network.getLinks().get(Id.createLinkId("4_4r_stop")),rand.intValue());
+			createOnePerson(scenario,scenario.getPopulation(),vt1,i,new Coord(0,20000),
+					new Coord(30010,20000),rand.intValue());
 			j++;
 		}
 		for(int i=0;i<popPerOD;i++) {
 			rand=1800*Math.random()-1800*Math.random();
-			createOnePerson(scenario,scenario.getPopulation(),vt1,j,network.getLinks().get(Id.createLinkId("1_1r_stop")),
-					network.getLinks().get(Id.createLinkId("7_7r_stop")),rand.intValue());
+			createOnePerson(scenario,scenario.getPopulation(),vt1,j,new Coord(0,20000),
+					new Coord(15000,0),rand.intValue());
 			j++;
 		}
 		for(int i=0;i<popPerOD;i++) {
 			rand=1800*Math.random()-1800*Math.random();
-			createOnePerson(scenario,scenario.getPopulation(),vt1,j,network.getLinks().get(Id.createLinkId("2_2r_stop")),
-					network.getLinks().get(Id.createLinkId("7_7r_stop")),rand.intValue());
+			createOnePerson(scenario,scenario.getPopulation(),vt1,j,new Coord(10000,20000),
+					new Coord(15000,0),rand.intValue());
 			j++;
 		}
 		for(int i=0;i<popPerOD;i++) {
 			rand=1800*Math.random()-1800*Math.random();
-			createOnePerson(scenario,scenario.getPopulation(),vt1,j,network.getLinks().get(Id.createLinkId("2_2r_stop")),
-					network.getLinks().get(Id.createLinkId("7_7r_stop")),rand.intValue());
+			createOnePerson(scenario,scenario.getPopulation(),vt1,j,new Coord(10000,20000),
+					new Coord(30010,20000),rand.intValue());
 			j++;
 		}
 	}
@@ -70,6 +75,7 @@ public class PopulationGenerator {
 		VehiclesFactory vf = vehicles.getFactory();
 		Vehicle v = vf.createVehicle(Id.createVehicleId(personId), vt);
 		vehicles.addVehicle(v);
+		
 
 		Plan plan = population.getFactory().createPlan();
 
@@ -103,6 +109,9 @@ public class PopulationGenerator {
 		plan.addActivity(home2);
 
 		person.addPlan(plan);
+		Map<String,Id<Vehicle>> vSet = new HashMap<>();
+		vSet.put("car", v.getId());
+		VehicleUtils.insertVehicleIdsIntoAttributes(person, vSet);
 		population.addPerson(person);
 	}
 

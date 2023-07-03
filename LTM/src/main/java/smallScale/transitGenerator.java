@@ -282,7 +282,7 @@ public class transitGenerator {
 		
 		links.add(Id.createLinkId(nodes4[nodes4.length-1]+"r_"+nodes4[nodes4.length-1]+"_stop_train"));
 		for(int i=nodes4.length-1;i>0;i--) {
-			links.add(Id.createLinkId(nodes4[i]+"_"+nodes4[i-1]+"r"));
+			links.add(Id.createLinkId(nodes4[i]+"_"+nodes4[i-1]+"r"+"_MTR"));
 			links.add(Id.createLinkId(nodes4[i-1]+"r_"+nodes4[i-1]+"_stop_train"));
 		}
 		StartLinkId=links.get(0);

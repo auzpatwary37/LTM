@@ -91,6 +91,7 @@ public class GenericNodeModel implements NodeModel{
 	public void setTimeStepAndRoutes(double[] timePoints, MapToArray<NetworkRoute> routes) {
 		this.timePoints = timePoints;
 		this.T = timePoints.length;
+		this.routes = routes;
 	}
 
 	public void setOptimizationVariables(MapToArray<VariableDetails> variables) {
