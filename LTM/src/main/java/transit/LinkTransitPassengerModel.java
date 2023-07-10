@@ -88,12 +88,14 @@ public class LinkTransitPassengerModel {
 	}
 	public void addRoute(Id<NetworkRoute> rId,NetworkRoute r, double[] vehicleCapacity, Map<Id<Link>,double[]>demand, Map<Id<Link>,double[][]>ddemand, Map<Id<Link>,double[]>demanddt) {
 		//this.transitLine_routeToNetworkRouteMap.put(tlId.toString()+"___"+trId.toString(),r);
-		this.routes.put(rId, r);
-		this.vehicleCapacity.put(rId, vehicleCapacity);
-		this.demandPassenger.put(rId,demand);
-		this.dDemandPassenger.put(rId,ddemand);
-		this.demandPassengerdt.put(rId,demanddt);
-		this.calcCumulativeDemand();
+		if(!demand.isEmpty()) {
+			this.routes.put(rId, r);
+			this.vehicleCapacity.put(rId, vehicleCapacity);
+			this.demandPassenger.put(rId,demand);
+			this.dDemandPassenger.put(rId,ddemand);
+			this.demandPassengerdt.put(rId,demanddt);
+			this.calcCumulativeDemand();
+		}
 		
 	}
 	public void calcCumulativeDemand() {

@@ -196,12 +196,14 @@ public class LTMLoadableDemandV2 {
 				for(Entry<Id<Departure>, Departure> dp:tr.getValue().getDepartures().entrySet()) {
 					Vehicle v = this.trv.getVehicles().get(dp.getValue().getVehicleId());
 					String timeBeanId = getTimeBean(demandTimeBean, dp.getValue().getDepartureTime());
-					space.compute(timeBeanId, (k,vv)->vv==null?v.getType().getCapacity().getSeats()+v.getType().getCapacity().getStandingRoom():vv+v.getType().getCapacity().getSeats()+v.getType().getCapacity().getStandingRoom());
-					cnt.compute(timeBeanId, (k,vv)->vv==null?1:vv+1);
-					
-					if(!demandFromRoute.containsKey(timeBeanId))demandFromRoute.put(timeBeanId, new Tuple<Double,double[]>(0.,new double[this.variables.getKeySet().size()]));
-					demandFromRoute.put(timeBeanId, new Tuple<Double,double[]>(demandFromRoute.get(timeBeanId).getFirst()+v.getType().getPcuEquivalents()*this.scalingFactor,
-							LTMUtils.sum(demandFromRoute.get(timeBeanId).getSecond(), new double[this.variables.getKeySet().size()])));
+					if(timeBeanId!=null) {
+						space.compute(timeBeanId, (k,vv)->vv==null?v.getType().getCapacity().getSeats()+v.getType().getCapacity().getStandingRoom():vv+v.getType().getCapacity().getSeats()+v.getType().getCapacity().getStandingRoom());
+						cnt.compute(timeBeanId, (k,vv)->vv==null?1:vv+1);
+						
+						if(!demandFromRoute.containsKey(timeBeanId))demandFromRoute.put(timeBeanId, new Tuple<Double,double[]>(0.,new double[this.variables.getKeySet().size()]));
+						demandFromRoute.put(timeBeanId, new Tuple<Double,double[]>(demandFromRoute.get(timeBeanId).getFirst()+v.getType().getPcuEquivalents()*this.scalingFactor,
+								LTMUtils.sum(demandFromRoute.get(timeBeanId).getSecond(), new double[this.variables.getKeySet().size()])));
+					}
 				}
 				
 				

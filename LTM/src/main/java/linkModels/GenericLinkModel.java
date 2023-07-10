@@ -40,12 +40,12 @@ public class GenericLinkModel implements LinkModel{
 	private double[] Nxl;//flow at xl
 	private double[] Nxldt;//time gradient for Nxl
 	private double[][] dNxl;//gradient for flow at xl
-	private double[] S;//sending flow
-	private double[] R;//receiving flow
-	private double[][] dS;//gradient of sending flow
-	private double[][] dR;//gradient of receiving flow
-	private double[] Sdt;//time gradient of S
-	private double[] Rdt;//time gradient of R
+//	private double[] S;//sending flow
+//	private double[] R;//receiving flow
+//	private double[][] dS;//gradient of sending flow
+//	private double[][] dR;//gradient of receiving flow
+//	private double[] Sdt;//time gradient of S
+//	private double[] Rdt;//time gradient of R
 	private double[]k;// number of vehicles on the road 
 	private MapToArray<Id<NetworkRoute>> routesId;// map to array converter for the routes on this link
 	private Map<Id<NetworkRoute>,NetworkRoute> routes;
@@ -74,8 +74,8 @@ public class GenericLinkModel implements LinkModel{
 		this.dNxl = new double[this.T][this.variables.getKeySet().size()];
 		this.dNrx0 = new double[routesId.getKeySet().size()][T][this.variables.getKeySet().size()];
 		this.dNrxl = new double[routesId.getKeySet().size()][T][this.variables.getKeySet().size()];
-		this.dS = new double[T][this.variables.getKeySet().size()];
-		this.dR = new double[T][this.variables.getKeySet().size()];
+//		this.dS = new double[T][this.variables.getKeySet().size()];
+//		this.dR = new double[T][this.variables.getKeySet().size()];
 	}
 	
 	@Override
@@ -94,10 +94,10 @@ public class GenericLinkModel implements LinkModel{
 		Nxl = new double[T];
 		Nxldt = new double[T];
 		k = new double[T];
-		S = new double[T];
-		Sdt = new double[T];
-		R = new double[T];
-		Rdt = new double[T];
+//		S = new double[T];
+//		Sdt = new double[T];
+//		R = new double[T];
+//		Rdt = new double[T];
 	}
 
 	@Override
@@ -111,14 +111,16 @@ public class GenericLinkModel implements LinkModel{
 
 
 	@Override
-	public TuplesOfThree<double[],double[],double[][]> getSendingFlow(int timeIdx) {
-			if(fd.L/fd.vf>delT) {
-				throw new IllegalArgumentException("Reduce time step size!!! L/vf is greater than time step size!!!");
-			}
+	public TuplesOfThree<Double,Double,double[]> getSendingFlow(int timeIdx) {
+//			if(fd.L/fd.vf<delT) {
+//				throw new IllegalArgumentException("Reduce time step size!!! L/vf is greater than time step size!!!");
+//			}
 			double t = timePoints[timeIdx]+delT-fd.L/fd.vf;// get the time index which flow is relevant
 			int tl = this.getTimeIndex(t);// get the time point which is just lower than or equal to t
 			double N = 0;
 			double s = 0;
+			double sdt = 0;
+			double[] ds = null;
 			if(this.variables!=null) {
 				Tuple<Double, double[]> Ne = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<Double,Double>(this.timePoints[tl],this.timePoints[tl+1]), new Tuple<Double,Double>(this.Nx0[tl],this.Nx0[tl+1]),
 						new Tuple<double[],double[]>(new double[this.variables.getKeySet().size()],new double[this.variables.getKeySet().size()]), 
@@ -130,16 +132,16 @@ public class GenericLinkModel implements LinkModel{
 				double[] dN = Ne.getSecond();
 				double Ndt = Nedt.getSecond()[0];
 				s = Math.min(N-this.Nxl[timeIdx], fd.qm*delT);
-				double[] ds = new double[this.variables.getKeySet().size()];
-				double sdt = 0;
+				ds = new double[this.variables.getKeySet().size()];
+				
 				if(s!=fd.qm*delT) {
 					ds = MatrixUtils.createRealVector(dN).subtract(MatrixUtils.createRealVector(this.dNxl[timeIdx])).getData();
 					sdt = Ndt-Nxldt[timeIdx];
 				}else {
 					sdt = fd.qm;
 				}
-				this.dS[timeIdx] = ds;
-				this.Sdt[timeIdx] = sdt;
+//				this.dS[timeIdx] = ds;
+//				this.Sdt[timeIdx] = sdt;
 				
 				if(Double.isNaN(s)||Double.isInfinite(s)) {
 					logger.debug("sending flow is nan or infinite!");
@@ -160,22 +162,25 @@ public class GenericLinkModel implements LinkModel{
 					logger.debug("sending flow is nan or infinite!");
 				}
 			}
-			this.S[timeIdx] = s;
+//			this.S[timeIdx] = s;
 			
 		
-		return new TuplesOfThree<>(S,Sdt,dS);// the sending flow is the min between this two term 
+		return new TuplesOfThree<>(s,sdt,ds);// the sending flow is the min between this two term 
 	}
 
 
 
 	@Override
-	public TuplesOfThree<double[],double[],double[][]> getRecivingFlow(int timeIdx) {
+	public TuplesOfThree<Double,Double,double[]> getRecivingFlow(int timeIdx) {
 		//for(int timeIdx = 0; timeIdx<this.T;timeIdx++) {
-		double t = timePoints[timeIdx]+delT-fd.L/fd.wf;// get the time index which flow is relevant
+		double t = timePoints[timeIdx]+delT+fd.L/fd.wf;// get the time index which flow is relevant
+		double r = 0;
+		double[] dr = null;
+		double rdt = 0;
 		if(t>0) {
 			int tl = this.getTimeIndex(t);// get the time point which is just lower that t
 			double N = 0;
-			double r = 0;
+			
 			if(this.variables!=null) {
 				Tuple<Double, double[]> Ne = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<Double,Double>(this.timePoints[tl],this.timePoints[tl+1]), new Tuple<Double,Double>(this.Nxl[tl],this.Nxl[tl+1]), 
 						new Tuple<double[],double[]>(new double[this.variables.getKeySet().size()],new double[this.variables.getKeySet().size()]), 
@@ -188,16 +193,16 @@ public class GenericLinkModel implements LinkModel{
 				r = Math.min(N+fd.kj*fd.L-this.Nx0[timeIdx], fd.qm*delT);
 				double[] dN = Ne.getSecond();
 				double Ndt = Nedt.getSecond()[0];
-				double[] dr = new double[this.variables.getKeySet().size()];
-				double rdt = 0;
+				dr = new double[this.variables.getKeySet().size()];
+				
 				if(r != fd.qm*delT) {
 					dr = MatrixUtils.createRealVector(dN).subtract(MatrixUtils.createRealVector(this.dNx0[timeIdx])).getData();
 					rdt = Ndt-Nx0dt[timeIdx];
 				}else {
 					rdt = fd.qm;
 				}
-				this.dR[timeIdx] = dr;
-				this.Rdt[timeIdx] = rdt;
+//				this.dR[timeIdx] = dr;
+//				this.Rdt[timeIdx] = rdt;
 				if(Double.isNaN(r)||Double.isInfinite(r)) {
 					logger.debug("sending flow is nan or infinite!");
 				}
@@ -215,10 +220,10 @@ public class GenericLinkModel implements LinkModel{
 					logger.debug("sending flow is nan or infinite!");
 				}
 			}
-			this.R[timeIdx] = r;
+			//this.R[timeIdx] = r;
 		}
 		//}
-		return new TuplesOfThree<>(R,Rdt,dR);// the sending flow is the min between this two term 
+		return new TuplesOfThree<>(r,rdt,dr);// the sending flow is the min between this two term 
 	}
 
 
@@ -369,16 +374,11 @@ public class GenericLinkModel implements LinkModel{
 		Nxl = new double[T];
 		Nxldt = new double[T];
 		k = new double[T];
-		S = new double[T];
-		Sdt = new double[T];
-		R = new double[T];
-		Rdt = new double[T];
 		this.dNx0 = new double[this.T][this.variables.getKeySet().size()];
 		this.dNxl = new double[this.T][this.variables.getKeySet().size()];
 		this.dNrx0 = new double[routes.size()][T][this.variables.getKeySet().size()];
 		this.dNrxl = new double[routes.size()][T][this.variables.getKeySet().size()];
-		this.dS = new double[T][this.variables.getKeySet().size()];
-		this.dR = new double[T][this.variables.getKeySet().size()];
+
 	}
 
 //	@Override

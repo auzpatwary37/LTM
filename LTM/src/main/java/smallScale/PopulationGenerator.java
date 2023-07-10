@@ -93,7 +93,7 @@ public class PopulationGenerator {
 		plan.addLeg(hinweg);
 
 		Activity work = population.getFactory().createActivityFromCoord("work", coordWork);
-		work.setEndTime(17*60*60+time_offset);
+		work.setEndTime(13*60*60+time_offset);
 		plan.addActivity(work);
 
 		Leg rueckweg;

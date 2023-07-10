@@ -859,34 +859,35 @@ public class LTMUtils{
 		Map<Id<Link>,double[]> q = new HashMap<>();
 		Map<Id<Link>,double[][]> dq = new HashMap<>();
 		Map<Id<Link>,double[]> qdt = new HashMap<>();
-		for(Entry<String, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>>> time:demand.getTransitTravelTimeQuery().get(rId).entrySet()) {
-			for(int i = 0;i<ltmTimeSteps.length;i++) {
-				double t = ltmTimeSteps[i];
-				if(t==0)t=1;
-				if(t>demand.getDemandTimeBean().get(time.getKey()).getFirst() && t<=demand.getDemandTimeBean().get(time.getKey()).getSecond()) {
-					for(Entry<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>> l_l:time.getValue().entrySet()) {
-						if(l_l.getKey().getFirst().equals(fromLink)) {
-							if(!q.containsKey(l_l.getKey().getSecond())) {
-								q.put(l_l.getKey().getSecond(), new double[ltmTimeSteps.length]);
-								dq.put(l_l.getKey().getSecond(), new double[ltmTimeSteps.length][l_l.getValue().getSecond().length]);
-								qdt.put(l_l.getKey().getSecond(), new double[ltmTimeSteps.length]);
+		if(demand.getTransitTravelTimeQuery().get(rId) != null) {// if demand on this transit vehicle is not null
+			for(Entry<String, Map<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>>> time:demand.getTransitTravelTimeQuery().get(rId).entrySet()) {
+				for(int i = 0;i<ltmTimeSteps.length;i++) {
+					double t = ltmTimeSteps[i];
+					if(t==0)t=1;
+					if(t>demand.getDemandTimeBean().get(time.getKey()).getFirst() && t<=demand.getDemandTimeBean().get(time.getKey()).getSecond()) {
+						for(Entry<Tuple<Id<Link>, Id<Link>>, Tuple<Double, double[]>> l_l:time.getValue().entrySet()) {
+							if(l_l.getKey().getFirst().equals(fromLink)) {
+								if(!q.containsKey(l_l.getKey().getSecond())) {
+									q.put(l_l.getKey().getSecond(), new double[ltmTimeSteps.length]);
+									dq.put(l_l.getKey().getSecond(), new double[ltmTimeSteps.length][l_l.getValue().getSecond().length]);
+									qdt.put(l_l.getKey().getSecond(), new double[ltmTimeSteps.length]);
+								}
+								double ltmTime = 0;
+								double dmTime = demand.getDemandTimeBean().get(time.getKey()).getSecond()-demand.getDemandTimeBean().get(time.getKey()).getFirst();
+								if(i==0) {
+									ltmTime = (ltmTimeSteps[1]-ltmTimeSteps[0]);
+								}else{
+									ltmTime = (ltmTimeSteps[i]-ltmTimeSteps[i-1]);
+								}
+								q.get(l_l.getKey().getSecond())[i] = l_l.getValue().getFirst()/(dmTime)*(ltmTime);
+								dq.get(l_l.getKey().getSecond())[i] = MatrixUtils.createRealVector(l_l.getValue().getSecond()).mapMultiply(ltmTime/dmTime).toArray();
+								qdt.get(l_l.getKey().getSecond())[i] = 1/dmTime*l_l.getValue().getFirst();
 							}
-							double ltmTime = 0;
-							double dmTime = demand.getDemandTimeBean().get(time.getKey()).getSecond()-demand.getDemandTimeBean().get(time.getKey()).getFirst();
-							if(i==0) {
-								ltmTime = (ltmTimeSteps[1]-ltmTimeSteps[0]);
-							}else{
-								ltmTime = (ltmTimeSteps[i]-ltmTimeSteps[i-1]);
-							}
-							q.get(l_l.getKey().getSecond())[i] = l_l.getValue().getFirst()/(dmTime)*(ltmTime);
-							dq.get(l_l.getKey().getSecond())[i] = MatrixUtils.createRealVector(l_l.getValue().getSecond()).mapMultiply(ltmTime/dmTime).toArray();
-							qdt.get(l_l.getKey().getSecond())[i] = 1/dmTime*l_l.getValue().getFirst();
 						}
 					}
 				}
 			}
 		}
-		
 		return new TuplesOfThree<>(q,qdt,dq);
 		
 	}

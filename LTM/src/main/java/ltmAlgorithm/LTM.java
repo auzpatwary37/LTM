@@ -221,8 +221,8 @@ public class LTM implements DNL{
 			this.nodeModels.entrySet().parallelStream().forEach(e->{
 				e.getValue().performLTMStep(timeStep);
 			});
-			if((double)timeStep/this.timePoints.length*100%10==0) {
-				System.out.println("Finished "+timeStep/this.timePoints.length*100+" % of the time steps.");
+			if((double)timeStep%720==0) {
+				System.out.println("Finished "+timeStep/720.+" hr of the time steps.");
 				System.out.println("Memory usage = "+Long.toString((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())/(8*1024*1024))+" MB");
 			}
 		}
@@ -386,7 +386,7 @@ public class LTM implements DNL{
 			for(Id<NetworkRoute> r:link.getValue()) {
 				
 				TuplesOfThree<Map<Id<Link>, double[]>, Map<Id<Link>, double[]>, Map<Id<Link>, double[][]>> d = LTMUtils.generatePassengerDemand(demand, r, link.getKey(),this.timePoints);
-				lpModel.addRoute(r,this.demand.getTrvRoutes().get(r),capacity.get(r),d.getFirst(),d.getThird(),d.getSecond());
+				if(d.getFirst().containsKey(lpModel.getLink().getLink().getId()))lpModel.addRoute(r,this.demand.getTrvRoutes().get(r),capacity.get(r),d.getFirst(),d.getThird(),d.getSecond());
 			}
 		}	
 		

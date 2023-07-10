@@ -59,7 +59,7 @@ public class ODDifferentiableLTMModelTest {
 
 	//public static void main(String[] args) {
 	public static void main(String[] args) {
-		Measurements originalMeasurements = new MeasurementsReader().readMeasurements("toyScenarioData/toyScenarioMeasurements.xml");
+		Measurements originalMeasurements = new MeasurementsReader().readMeasurements("toyScenarioData/zeroMeasurements.xml");
 		Network net = NetworkUtils.readNetwork("toyScenarioData/network.xml");
 		
 		Set<Id<Measurement>> mKeys = new HashSet<>(originalMeasurements.getMeasurements().keySet());
@@ -77,6 +77,8 @@ public class ODDifferentiableLTMModelTest {
 		
 		config.plans().setInputFile("toyScenarioData/output_plans.xml.gz");
 		config.network().setInputFile("toyScenarioData/network.xml");
+		config.qsim().setStartTime(8*3600);
+		config.qsim().setEndTime(15*3600);
 		Scenario scenario = ScenarioUtils.loadScenario(config);
 		//Vehicles vehicles = VehicleUtils.createVehiclesContainer();
 		
