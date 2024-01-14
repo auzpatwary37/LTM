@@ -24,19 +24,19 @@ public class NetworkGenerator {
 		HashMap<String,Link> LinkList=new HashMap<>();
 
 		NodeList.put("1",netfac.createNode(Id.createNodeId("1"), new Coord(0,20000)));
-		NodeList.put("1r",netfac.createNode(Id.createNodeId("1r"), new Coord(10,20000)));
+		NodeList.put("1r",netfac.createNode(Id.createNodeId("1r"), new Coord(100,20000)));
 		NodeList.put("2",netfac.createNode(Id.createNodeId("2"), new Coord(10000,20000)));
-		NodeList.put("2r",netfac.createNode(Id.createNodeId("2r"), new Coord(10010,20000)));
+		NodeList.put("2r",netfac.createNode(Id.createNodeId("2r"), new Coord(10100,20000)));
 		NodeList.put("3",netfac.createNode(Id.createNodeId("3"), new Coord(20000,20000)));
-		NodeList.put("3r",netfac.createNode(Id.createNodeId("3r"), new Coord(20010,20000)));
+		NodeList.put("3r",netfac.createNode(Id.createNodeId("3r"), new Coord(20100,20000)));
 		NodeList.put("4",netfac.createNode(Id.createNodeId("4"), new Coord(30000,20000)));
-		NodeList.put("4r",netfac.createNode(Id.createNodeId("4r"), new Coord(30010,20000)));
+		NodeList.put("4r",netfac.createNode(Id.createNodeId("4r"), new Coord(30100,20000)));
 		NodeList.put("5",netfac.createNode(Id.createNodeId("5"), new Coord(10000,10000)));
-		NodeList.put("5r",netfac.createNode(Id.createNodeId("5r"), new Coord(10010,10000)));
+		NodeList.put("5r",netfac.createNode(Id.createNodeId("5r"), new Coord(10100,10000)));
 		NodeList.put("6",netfac.createNode(Id.createNodeId("6"), new Coord(20000,10000)));
-		NodeList.put("6r",netfac.createNode(Id.createNodeId("6r"), new Coord(20010,10000)));
+		NodeList.put("6r",netfac.createNode(Id.createNodeId("6r"), new Coord(20100,10000)));
 		NodeList.put("7",netfac.createNode(Id.createNodeId("7"), new Coord(15000,0)));
-		NodeList.put("7r",netfac.createNode(Id.createNodeId("7r"), new Coord(15010,0)));
+		NodeList.put("7r",netfac.createNode(Id.createNodeId("7r"), new Coord(15100,0)));
 
 
 		//create car Links
@@ -178,7 +178,7 @@ public class NetworkGenerator {
 		l.setAllowedModes(modes);
 		l.setNumberOfLanes(2);
 		l.setCapacity(1800*l.getNumberOfLanes());
-		l.setFreespeed(22.22);
+		l.setFreespeed(18.22);
 		return l;
 	}
 	
@@ -190,7 +190,7 @@ public class NetworkGenerator {
 		modes.add("bus");
 		l.setAllowedModes(modes);
 		l.setNumberOfLanes(2);
-		l.setCapacity(200000*l.getNumberOfLanes());
+		l.setCapacity(3600*l.getNumberOfLanes());
 		l.setFreespeed(16.67);
 		return l;
 	}
@@ -200,7 +200,7 @@ public class NetworkGenerator {
 		modes.add(mode);
 		l.setAllowedModes(modes);
 		l.setNumberOfLanes(2);
-		l.setCapacity(200000*l.getNumberOfLanes());
+		l.setCapacity(3600*l.getNumberOfLanes());
 		l.setFreespeed(16.67);
 		return l;
 	}

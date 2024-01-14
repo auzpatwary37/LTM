@@ -37,8 +37,8 @@ public class SimRunImplToy implements SimRun{
 		config.global().setCoordinateSystem("arbitrary");
 		config.parallelEventHandling().setNumberOfThreads(3);
 		config.controler().setWritePlansInterval(50);
-		config.qsim().setStartTime(0.0);
-		config.qsim().setEndTime(93600.0);
+		config.qsim().setStartTime(0.);
+		config.qsim().setEndTime(24*3600.0);
 		config.global().setNumberOfThreads(3);
 		config.strategy().setFractionOfIterationsToDisableInnovation(0.8);
 		config.controler().setWriteEventsInterval(50);

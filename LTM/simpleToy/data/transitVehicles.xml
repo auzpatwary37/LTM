@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<vehicleDefinitions xmlns="http://www.matsim.org/files/dtd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.matsim.org/files/dtd http://www.matsim.org/files/dtd/vehicleDefinitions_v2.0.xsd">
+
+	<vehicleType id="bus">
+
+		<capacity seats="40" standingRoomInPersons="10">
+
+		</capacity>
+		<length meter="3.0"/>
+		<width meter="1.0"/>
+		<costInformation>
+
+		</costInformation>
+		<passengerCarEquivalents pce="3.0"/>
+		<networkMode networkMode="car"/>
+		<flowEfficiencyFactor factor="1.0"/>
+	</vehicleType>
+
+	<vehicle id="bus1_r0" type="bus"/>
+	<vehicle id="bus1_r1200" type="bus"/>
+	<vehicle id="bus1_r1500" type="bus"/>
+	<vehicle id="bus1_r1800" type="bus"/>
+	<vehicle id="bus1_r2100" type="bus"/>
+	<vehicle id="bus1_r2400" type="bus"/>
+	<vehicle id="bus1_r2700" type="bus"/>
+	<vehicle id="bus1_r300" type="bus"/>
+	<vehicle id="bus1_r3000" type="bus"/>
+	<vehicle id="bus1_r3300" type="bus"/>
+	<vehicle id="bus1_r600" type="bus"/>
+	<vehicle id="bus1_r900" type="bus"/>
+	<vehicle id="bus2_r0" type="bus"/>
+	<vehicle id="bus2_r1200" type="bus"/>
+	<vehicle id="bus2_r1500" type="bus"/>
+	<vehicle id="bus2_r1800" type="bus"/>
+	<vehicle id="bus2_r2100" type="bus"/>
+	<vehicle id="bus2_r2400" type="bus"/>
+	<vehicle id="bus2_r2700" type="bus"/>
+	<vehicle id="bus2_r300" type="bus"/>
+	<vehicle id="bus2_r3000" type="bus"/>
+	<vehicle id="bus2_r3300" type="bus"/>
+	<vehicle id="bus2_r600" type="bus"/>
+	<vehicle id="bus2_r900" type="bus"/>
+		
+
+</vehicleDefinitions>

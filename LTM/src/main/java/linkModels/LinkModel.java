@@ -142,4 +142,6 @@ public interface LinkModel {
 	
 	
 	public void reset();
+
+	public boolean checkNx0SumChange();
 }

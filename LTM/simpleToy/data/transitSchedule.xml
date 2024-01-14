@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE transitSchedule SYSTEM "http://www.matsim.org/files/dtd/transitSchedule_v2.dtd">
+
+<transitSchedule>
+
+	<transitStops>
+		<stopFacility id="3_D" x="20000.0" y="2500.0" linkRefId="3_D" isBlocking="false"/>
+		<stopFacility id="O1_1" x="0.0" y="2500.0" linkRefId="O1_1" isBlocking="false"/>
+	</transitStops>
+	<transitLine id="bus1">
+		<transitRoute id="bus1_r">
+			<transportMode>bus</transportMode>
+			<routeProfile>
+				<stop refId="O1_1" arrivalOffset="00:00:00" departureOffset="00:00:10" awaitDeparture="false"/>
+				<stop refId="3_D" arrivalOffset="00:10:10" departureOffset="00:10:20" awaitDeparture="false"/>
+			</routeProfile>
+			<route>
+				<link refId="O1_1"/>
+				<link refId="1_P"/>
+				<link refId="P_3"/>
+				<link refId="3_D"/>
+			</route>
+			<departures>
+				<departure id="bus1_r0" departureTime="08:00:00" vehicleRefId="bus1_r0"/>
+				<departure id="bus1_r1200" departureTime="08:20:00" vehicleRefId="bus1_r1200"/>
+				<departure id="bus1_r1500" departureTime="08:25:00" vehicleRefId="bus1_r1500"/>
+				<departure id="bus1_r1800" departureTime="08:30:00" vehicleRefId="bus1_r1800"/>
+				<departure id="bus1_r2100" departureTime="08:35:00" vehicleRefId="bus1_r2100"/>
+				<departure id="bus1_r2400" departureTime="08:40:00" vehicleRefId="bus1_r2400"/>
+				<departure id="bus1_r2700" departureTime="08:45:00" vehicleRefId="bus1_r2700"/>
+				<departure id="bus1_r300" departureTime="08:05:00" vehicleRefId="bus1_r300"/>
+				<departure id="bus1_r3000" departureTime="08:50:00" vehicleRefId="bus1_r3000"/>
+				<departure id="bus1_r3300" departureTime="08:55:00" vehicleRefId="bus1_r3300"/>
+				<departure id="bus1_r600" departureTime="08:10:00" vehicleRefId="bus1_r600"/>
+				<departure id="bus1_r900" departureTime="08:15:00" vehicleRefId="bus1_r900"/>
+			</departures>
+		</transitRoute>
+	</transitLine>
+	<transitLine id="bus2">
+		<transitRoute id="bus2_r">
+			<transportMode>bus</transportMode>
+			<routeProfile>
+				<stop refId="O1_1" arrivalOffset="00:00:00" departureOffset="00:00:10" awaitDeparture="false"/>
+				<stop refId="3_D" arrivalOffset="00:06:40" departureOffset="00:07:00" awaitDeparture="false"/>
+			</routeProfile>
+			<route>
+				<link refId="O1_1"/>
+				<link refId="1_N"/>
+				<link refId="N_P"/>
+				<link refId="P_3"/>
+				<link refId="3_D"/>
+			</route>
+			<departures>
+				<departure id="bus2_r0" departureTime="08:00:00" vehicleRefId="bus2_r0"/>
+				<departure id="bus2_r1200" departureTime="08:20:00" vehicleRefId="bus2_r1200"/>
+				<departure id="bus2_r1500" departureTime="08:25:00" vehicleRefId="bus2_r1500"/>
+				<departure id="bus2_r1800" departureTime="08:30:00" vehicleRefId="bus2_r1800"/>
+				<departure id="bus2_r2100" departureTime="08:35:00" vehicleRefId="bus2_r2100"/>
+				<departure id="bus2_r2400" departureTime="08:40:00" vehicleRefId="bus2_r2400"/>
+				<departure id="bus2_r2700" departureTime="08:45:00" vehicleRefId="bus2_r2700"/>
+				<departure id="bus2_r300" departureTime="08:05:00" vehicleRefId="bus2_r300"/>
+				<departure id="bus2_r3000" departureTime="08:50:00" vehicleRefId="bus2_r3000"/>
+				<departure id="bus2_r3300" departureTime="08:55:00" vehicleRefId="bus2_r3300"/>
+				<departure id="bus2_r600" departureTime="08:10:00" vehicleRefId="bus2_r600"/>
+				<departure id="bus2_r900" departureTime="08:15:00" vehicleRefId="bus2_r900"/>
+			</departures>
+		</transitRoute>
+	</transitLine>
+</transitSchedule>

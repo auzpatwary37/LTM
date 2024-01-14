@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<Measurements>
+    <timeBeans>
+        <timeBean EndingTime="27000.0" StartingTime="25200.0" timeBeanId="7_7.30"/>
+        <timeBean EndingTime="32400.0" StartingTime="30600.0" timeBeanId="8.30_9"/>
+        <timeBean EndingTime="28800.0" StartingTime="27000.0" timeBeanId="7.30_8"/>
+        <timeBean EndingTime="30600.0" StartingTime="28800.0" timeBeanId="8_8.30"/>
+    </timeBeans>
+    <Measurement MeasurementId="O1_1" MeasurementType="linkVolume">
+        <Volumes>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="7_7.30"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="8.30_9"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="7.30_8"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="8_8.30"/>
+        </Volumes>
+        <LinkIds>
+            <LinkId Id="O1_1"/>
+        </LinkIds>
+    </Measurement>
+    <Measurement MeasurementId="1_N" MeasurementType="linkVolume">
+        <Volumes>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="7_7.30"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="8.30_9"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="7.30_8"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="8_8.30"/>
+        </Volumes>
+        <LinkIds>
+            <LinkId Id="1_N"/>
+        </LinkIds>
+    </Measurement>
+    <Measurement MeasurementId="1_P" MeasurementType="linkVolume">
+        <Volumes>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="7_7.30"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="8.30_9"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="7.30_8"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="8_8.30"/>
+        </Volumes>
+        <LinkIds>
+            <LinkId Id="1_P"/>
+        </LinkIds>
+    </Measurement>
+    <Measurement MeasurementId="P_3" MeasurementType="linkVolume">
+        <Volumes>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="7_7.30"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="8.30_9"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="7.30_8"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="8_8.30"/>
+        </Volumes>
+        <LinkIds>
+            <LinkId Id="P_3"/>
+        </LinkIds>
+    </Measurement>
+    <Measurement MeasurementId="3_D" MeasurementType="linkVolume">
+        <Volumes>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="7_7.30"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="8.30_9"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="7.30_8"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="8_8.30"/>
+        </Volumes>
+        <LinkIds>
+            <LinkId Id="3_D"/>
+        </LinkIds>
+    </Measurement>
+    <Measurement MeasurementId="N_P" MeasurementType="linkVolume">
+        <Volumes>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="7_7.30"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="8.30_9"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="7.30_8"/>
+            <Volume PCUVolume="0.0" SD="0.0" TimeBeanId="8_8.30"/>
+        </Volumes>
+        <LinkIds>
+            <LinkId Id="N_P"/>
+        </LinkIds>
+    </Measurement>
+</Measurements>

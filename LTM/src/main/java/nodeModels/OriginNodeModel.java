@@ -2,6 +2,7 @@ package nodeModels;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.apache.commons.math.linear.MatrixUtils;
 import org.matsim.api.core.v01.Id;
@@ -28,7 +29,7 @@ public class OriginNodeModel{
 	private double[] Nr;
 	private double[] Nrdt;
 	private double[][] dNr;
-	
+	public static int globalTimeStep = 0;
 
 	private MapToArray<VariableDetails> variables;
 	private Map<String,Tuple<Double,Double>> demandTimeBean = null;
@@ -50,7 +51,7 @@ public class OriginNodeModel{
 		if(variables!=null)this.outLinkModel.setOptimizationVariables(variables);
 		originalNodeModel.addOriginNode(this);
 		this.T = LTMTimePoints.length;
-		TuplesOfThree<double[],double[],double[][]> Nrr = LTMUtils.setUpDemand(demand, demandTimeBean, variables, LTMTimePoints, 1800, true);
+		TuplesOfThree<double[],double[],double[][]> Nrr = LTMUtils.setUpDemandV2(demand, demandTimeBean, variables, LTMTimePoints, 1800, true);
 		this.Nr = Nrr.getFirst();
 		this.Nrdt = Nrr.getSecond();
 		this.dNr = Nrr.getThird();
@@ -103,6 +104,9 @@ public class OriginNodeModel{
 			gjdt =R.getSecond();
 			dgj = R.getThird();
 		}
+//		if(gj>0 && arraySum(dgj)==0) {
+//			System.out.println("No gradient!!!");
+//		}
 		return new TuplesOfThree<>(gj,gjdt,dgj);
 		
 	}
@@ -140,7 +144,18 @@ public class OriginNodeModel{
 		return demand;
 	}
 	public void setDemand(Map<String, Tuple<Double, double[]>> demand) {
+		for(Entry<String, Tuple<Double, double[]>> d:demand.entrySet()) {
+			if(d.getValue().getFirst()>0 && arraySum(d.getValue().getSecond())==0) {
+				throw new IllegalArgumentException("Demand gradient zero!!!");
+			}
+		}
 		this.demand = demand;
+	}
+	
+	public static double arraySum(double[] a) {
+		double sum = 0;
+		for(double d:a)sum+=d;
+		return sum;
 	}
 	
 	public void reset() {

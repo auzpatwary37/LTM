@@ -632,8 +632,11 @@ private SUEModelOutput performAssignment( LinkedHashMap<String,Double> params, L
 			
 		}
 	
+		long time = System.currentTimeMillis();
 		Tuple<Map<String, Map<Id<AnalyticalModelRoute>, Tuple<Double, double[]>>>, Map<String, Map<Id<AnalyticalModelTransitRoute>, Tuple<Double, double[]>>>> auxflow = 
 				this.applyChoiceModel(params, anaParams, additionalDataContainer);
+		System.out.println(System.currentTimeMillis()-time);
+		
 		
 		Map<String,Map<Id<TransitLink>,Tuple<Double,double[]>>> trDirectLinkDemand = new HashMap<>();
 		Map<String,Map<Id<TransitLink>,TransitDirectLink>> directLinks = new HashMap<>();
@@ -785,7 +788,7 @@ protected Tuple<Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>>
 
 			}
 			expectedMaxUtil = maxUtil+1/anaParams.get(CNLSUEModel.LinkMiuName)*Math.log(expectedMaxUtil);
-
+			
 
 			double totalProb = 0;
 			for(AnalyticalModelRoute r:routes){// now calculate the route choice probability 
@@ -995,9 +998,39 @@ protected Tuple<Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>>
 			trNum++;
 		}
 	}
-	return new Tuple<>(routeFlows,trRouteFlows);
+	Tuple<Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>>,Map<String,Map<Id<AnalyticalModelTransitRoute>,Tuple<Double,double[]>>>>  out = new Tuple<>(routeFlows,trRouteFlows);
+	this.checkForNan(out);
+	return out;
 }
 
+private boolean checkForNan(Tuple<Map<String,Map<Id<AnalyticalModelRoute>,Tuple<Double,double[]>>>,Map<String,Map<Id<AnalyticalModelTransitRoute>,Tuple<Double,double[]>>>> flows) {
+	for(Entry<String, Map<Id<AnalyticalModelRoute>, Tuple<Double, double[]>>> e:flows.getFirst().entrySet()){
+		for(Entry<Id<AnalyticalModelRoute>, Tuple<Double, double[]>> ee:e.getValue().entrySet()){
+			boolean flowNan = !Double.isFinite(ee.getValue().getFirst());
+			boolean gradNan = MatrixUtils.createRealVector(ee.getValue().getSecond()).isNaN() ||MatrixUtils.createRealVector(ee.getValue().getSecond()).isInfinite(); 
+			if(flowNan==true) {
+				return true;
+			}
+			if(gradNan == true) {
+				return true;
+			}
+		}
+	}
+	
+	for(Entry<String, Map<Id<AnalyticalModelTransitRoute>, Tuple<Double, double[]>>> e:flows.getSecond().entrySet()){
+		for(Entry<Id<AnalyticalModelTransitRoute>, Tuple<Double, double[]>> ee:e.getValue().entrySet()){
+			boolean flowNan = !Double.isFinite(ee.getValue().getFirst());
+			boolean gradNan = MatrixUtils.createRealVector(ee.getValue().getSecond()).isNaN() ||MatrixUtils.createRealVector(ee.getValue().getSecond()).isInfinite(); 
+			if(flowNan==true) {
+				return true;
+			}
+			if(gradNan == true) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
 
 public Map<String, Map<Id<AnalyticalModelRoute>, Double>> getRouteProb() {
 	return routeProb;

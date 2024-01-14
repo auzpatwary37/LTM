@@ -20,6 +20,7 @@ import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.utils.collections.Tuple;
 import org.matsim.facilities.ActivityFacility;
 
+import linkModels.GenericLinkModel;
 import linkModels.LinkModel;
 import nodeModels.DestinationNodeModel;
 import nodeModels.GenericNodeModel;
@@ -101,7 +102,7 @@ public class LTM implements DNL{
 			System.out.println("Finished link "+e.getKey()+" total memory consumption = "+Long.toString(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
 		});
 		for(NodeModel n:this.nodeModels.values()) {
-			n.setTimeStepAndRoutes(timePoints, null);
+			n.setTimeStepAndRoutes(timePoints, null);//why null here ??? Maybe because we do not need routes for the nodes.
 			if(variables!=null)n.setOptimizationVariables(variables);
 		}
 		demand.getDemand().entrySet().forEach(e->{
@@ -218,9 +219,19 @@ public class LTM implements DNL{
 	private void runLTMSimulation() {
 		for(int i = 0; i<this.timePoints.length-1;i++) {
 			int timeStep = i;
+			relayTimeStep(timeStep);
 			this.nodeModels.entrySet().parallelStream().forEach(e->{
 				e.getValue().performLTMStep(timeStep);
 			});
+			this.routeODModels.entrySet().parallelStream().forEach(e->{
+				e.getValue().getFirst().performLTMStep(timeStep);
+				e.getValue().getSecond().performLTMStep(timeStep);
+			});
+			this.trvRouteODModels.entrySet().parallelStream().forEach(e->{
+				e.getValue().getFirst().performLTMStep(timeStep);
+				e.getValue().getSecond().performLTMStep(timeStep);
+			});
+			
 			if((double)timeStep%720==0) {
 				System.out.println("Finished "+timeStep/720.+" hr of the time steps.");
 				System.out.println("Memory usage = "+Long.toString((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())/(8*1024*1024))+" MB");
@@ -414,6 +425,12 @@ public class LTM implements DNL{
     }
 
 
+	private static void relayTimeStep(int timeStep) {
+		GenericLinkModel.globalTimeStep = timeStep;
+		GenericNodeModel.globalTimeStep = timeStep;
+		OriginNodeModel.globalTimeStep = timeStep;
+		DestinationNodeModel.globalTimeStep = timeStep;
+	}
 
 	@Override
 	public void reSimulateTransit() {

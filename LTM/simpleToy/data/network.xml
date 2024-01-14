@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE network SYSTEM "http://www.matsim.org/files/dtd/network_v2.dtd">
+<network>
+
+<!-- ====================================================================== -->
+
+	<nodes>
+		<node id="1" x="150.0" y="2500.0" >
+		</node>
+		<node id="3" x="19700.0" y="2500.0" >
+		</node>
+		<node id="D" x="20000.0" y="2500.0" >
+		</node>
+		<node id="N" x="5000.0" y="5000.0" >
+		</node>
+		<node id="O1" x="0.0" y="2500.0" >
+		</node>
+		<node id="P" x="10000.0" y="2500.0" >
+		</node>
+	</nodes>
+
+<!-- ====================================================================== -->
+
+	<links capperiod="01:00:00" effectivecellsize="7.5" effectivelanewidth="3.75">
+		<link id="1_N" from="1" to="N" length="5456.418239101545" freespeed="16.0" capacity="2000.0" permlanes="2.0" oneway="1" modes="car,bus,pt" >
+		</link>
+		<link id="1_P" from="1" to="P" length="9850.0" freespeed="13.0" capacity="1800.0" permlanes="2.0" oneway="1" modes="car,bus,pt" >
+		</link>
+		<link id="3_D" from="3" to="D" length="300.0" freespeed="16.0" capacity="5400.0" permlanes="2.0" oneway="1" modes="car,bus,pt" >
+		</link>
+		<link id="N_P" from="N" to="P" length="5590.169943749474" freespeed="16.0" capacity="2000.0" permlanes="2.0" oneway="1" modes="car,bus,pt" >
+		</link>
+		<link id="O1_1" from="O1" to="1" length="150.0" freespeed="16.0" capacity="5400.0" permlanes="2.0" oneway="1" modes="car,bus,pt" >
+		</link>
+		<link id="P_3" from="P" to="3" length="9700.0" freespeed="16.0" capacity="4000.0" permlanes="2.0" oneway="1" modes="car,bus,pt" >
+		</link>
+	</links>
+
+<!-- ====================================================================== -->
+
+</network>

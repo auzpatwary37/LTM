@@ -1,6 +1,7 @@
 package utils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -260,7 +261,7 @@ public class LTMUtils{
 		String originDestinationIdentifier = "O";
 		if(!ifOriginElseDestination)originDestinationIdentifier = "D";
 		Link l = NetworkUtils.createLink(Id.createLinkId(r.toString()+originDestinationIdentifier), 
-				fromNode, toNode, null, 10, 10000, 36000, 1);
+				fromNode, toNode, null, 100, 18, 3600, 1);
 		return l;
 	}
 	public static Node createDummyNode(Node originalNode, boolean ifOriginElseDestination,Id<NetworkRoute> r) {
@@ -291,20 +292,21 @@ public class LTMUtils{
 		if(variables!=null)dNr = new double[LTMTimePoints.length][variables.getKeySet().size()];
 		
 		
-		for(Entry<String, Tuple<Double, Double>> timeBean:demandTimeBean.entrySet()) {
-			Set<Integer> timeSteps = new HashSet<>();
+		for(String k:orderTimeBeans(demandTimeBean)) {
+			Tuple<Double,Double> v = demandTimeBean.get(k);
+			List<Integer> timeSteps = new ArrayList<>();
 			for(int t=0;t<LTMTimePoints.length;t++) {
-				if(LTMTimePoints[t]<=timeBean.getValue().getSecond() && LTMTimePoints[t]>timeBean.getValue().getFirst()) {
+				if(LTMTimePoints[t]<=v.getSecond() && LTMTimePoints[t]>v.getFirst()) {
 					timeSteps.add(t);
 				}
 				
 			}
 			if(ifUniformElseConstFlowRate) {
-				double demandTotal = demand.get(timeBean.getKey()).getFirst();
-				double[] demandTotalGrad = demand.get(timeBean.getKey()).getSecond();
-				double rate = demandTotal/(timeBean.getValue().getSecond()-timeBean.getValue().getFirst());
+				double demandTotal = demand.get(k).getFirst();
+				double[] demandTotalGrad = demand.get(k).getSecond();
+				double rate = demandTotal/(v.getSecond()-v.getFirst());
 				RealVector rateGrad = null;
-				if(demandTotalGrad!=null)rateGrad = MatrixUtils.createRealVector(demandTotalGrad).mapDivide(timeBean.getValue().getSecond()-timeBean.getValue().getFirst());
+				if(demandTotalGrad!=null)rateGrad = MatrixUtils.createRealVector(demandTotalGrad).mapDivide(v.getSecond()-v.getFirst());
 				for(int t:timeSteps) {
 					Nrdt[t] = rate; 
 					if(t==0) {
@@ -324,6 +326,78 @@ public class LTMUtils{
 		return new TuplesOfThree<double[], double[], double[][]>(Nr, Nrdt, dNr);
 	}
 	
+	
+	/**
+	 * 
+	 * @param demand map of timebinKey - tuple<deamnd, demandGradient>
+	 * @param demandTimeBean - timeBeanKey -Tuple<start, end>
+	 * @param variables - variables with respect to which calculate gradient.
+	 * @param T - number of timeSteps in the LTM
+	 * @param LTMTimePoints 
+	 * @param maxflowRate 
+	 * @param ifUniformElseConstFlowRate
+	 * @return Nr Nrdt dNr
+	 */
+	public static TuplesOfThree<double[],double[],double[][]> setUpDemandV2(Map<String,Tuple<Double,double[]>>demand,Map<String,Tuple<Double,Double>> demandTimeBean,
+			MapToArray<VariableDetails>variables,double[] LTMTimePoints, double maxflowRate, boolean ifUniformElseConstFlowRate) {
+		
+		
+		double[] Nr = new double[LTMTimePoints.length];
+		double[] Nrdt = new double[LTMTimePoints.length];
+		double[][] dNr = null;
+		
+		if(variables!=null)dNr = new double[LTMTimePoints.length][variables.getKeySet().size()];
+		
+		Map<String,Tuple<Double,RealVector>> rates = new HashMap<>();
+		
+		for(Entry<String, Tuple<Double, double[]>> d:demand.entrySet()) {
+			double demandTotal = d.getValue().getFirst();
+			double[] demandTotalGrad = d.getValue().getSecond();
+			double rate = demandTotal/(demandTimeBean.get(d.getKey()).getSecond()-demandTimeBean.get(d.getKey()).getFirst());
+			RealVector rateGrad = null;
+			if(demandTotalGrad!=null)rateGrad = MatrixUtils.createRealVector(demandTotalGrad).mapDivide(demandTimeBean.get(d.getKey()).getSecond()-demandTimeBean.get(d.getKey()).getFirst());
+			rates.put(d.getKey(), new Tuple<>(rate,rateGrad));
+		}
+		
+		
+		for(int t = 0;t<LTMTimePoints.length;t++) {
+			for(Entry<String, Tuple<Double, Double>> timeBean:demandTimeBean.entrySet()) {
+				if(LTMTimePoints[t]<=timeBean.getValue().getSecond() && LTMTimePoints[t]>timeBean.getValue().getFirst()) {
+					Nr[t] = Nr[t-1]+rates.get(timeBean.getKey()).getFirst()*(LTMTimePoints[t]-LTMTimePoints[t-1]);
+					dNr[t] = rates.get(timeBean.getKey()).getSecond().mapMultiply(LTMTimePoints[t]-LTMTimePoints[t-1]).add(dNr[t-1]).getData();
+					Nrdt[t] = rates.get(timeBean.getKey()).getFirst();
+				}
+			}
+		}
+		
+		return new TuplesOfThree<double[], double[], double[][]>(Nr, Nrdt, dNr);
+	}
+	
+	private static List<String> orderTimeBeans(Map<String,Tuple<Double,Double>> timeBean){
+		List<Double> start = new ArrayList<>();
+		timeBean.values().forEach(v->start.add(v.getFirst()));
+		Collections.sort(start);
+		
+		List<String> tOrder = new ArrayList<>();
+		for(double d:start) {
+			for(Entry<String, Tuple<Double, Double>> s:timeBean.entrySet()) {
+				if(Double.compare(s.getValue().getFirst(),d)==0){
+					tOrder.add(s.getKey());
+					break;
+				}
+			}
+		}
+		return tOrder;
+		
+	}
+	
+	
+	public static boolean checkForNanOrInfinity(double[]a) {
+		for(double d:a) {
+			if (!Double.isFinite(d))return true;
+		}
+		return false;
+	}
 	
 	/**
 	 * 

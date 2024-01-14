@@ -4,34 +4,34 @@
 <transitSchedule>
 
 	<transitStops>
-		<stopFacility id="1_1rAAA_stop" x="10.0" y="20000.0" linkRefId="1_1r_stop" name="Station1" isBlocking="false"/>
-		<stopFacility id="1_1rAAA_stop_train" x="10.0" y="20000.0" linkRefId="1_1r_stop_train" name="Station1_train" isBlocking="false"/>
-		<stopFacility id="1r_1AAA_stop" x="10.0" y="20000.0" linkRefId="1r_1_stop" name="Station1" isBlocking="false"/>
-		<stopFacility id="1r_1AAA_stop_train" x="10.0" y="20000.0" linkRefId="1r_1_stop_train" name="Station1_train" isBlocking="false"/>
-		<stopFacility id="2_2rBBB_stop" x="10010.0" y="20000.0" linkRefId="2_2r_stop" name="Station2" isBlocking="false"/>
-		<stopFacility id="2_2rBBB_stop_train" x="10010.0" y="20000.0" linkRefId="2_2r_stop_train" name="Station2_train" isBlocking="false"/>
-		<stopFacility id="2r_2BBB_stop" x="10010.0" y="20000.0" linkRefId="2r_2_stop" name="Station2" isBlocking="false"/>
-		<stopFacility id="2r_2BBB_stop_train" x="10010.0" y="20000.0" linkRefId="2r_2_stop_train" name="Station2_train" isBlocking="false"/>
-		<stopFacility id="3_3rCCC_stop" x="20010.0" y="20000.0" linkRefId="3_3r_stop" name="Station3" isBlocking="false"/>
-		<stopFacility id="3_3rCCC_stop_train" x="20010.0" y="20000.0" linkRefId="3_3r_stop_train" name="Station3_train" isBlocking="false"/>
-		<stopFacility id="3r_3CCC_stop" x="20010.0" y="20000.0" linkRefId="3r_3_stop" name="Station3" isBlocking="false"/>
-		<stopFacility id="3r_3CCC_stop_train" x="20010.0" y="20000.0" linkRefId="3r_3_stop_train" name="Station3_train" isBlocking="false"/>
-		<stopFacility id="4_4rDDD_stop" x="30010.0" y="20000.0" linkRefId="4_4r_stop" name="Station4" isBlocking="false"/>
-		<stopFacility id="4_4rDDD_stop_train" x="30010.0" y="20000.0" linkRefId="4_4r_stop_train" name="Station4_train" isBlocking="false"/>
-		<stopFacility id="4r_4DDD_stop" x="30010.0" y="20000.0" linkRefId="4r_4_stop" name="Station4" isBlocking="false"/>
-		<stopFacility id="4r_4DDD_stop_train" x="30010.0" y="20000.0" linkRefId="4r_4_stop_train" name="Station4_train" isBlocking="false"/>
-		<stopFacility id="5_5rEEE_stop" x="10010.0" y="10000.0" linkRefId="5_5r_stop" name="Station5" isBlocking="false"/>
-		<stopFacility id="5_5rEEE_stop_train" x="10010.0" y="10000.0" linkRefId="5_5r_stop_train" name="Station5_train" isBlocking="false"/>
-		<stopFacility id="5r_5EEE_stop" x="10010.0" y="10000.0" linkRefId="5r_5_stop" name="Station5" isBlocking="false"/>
-		<stopFacility id="5r_5EEE_stop_train" x="10010.0" y="10000.0" linkRefId="5r_5_stop_train" name="Station5_train" isBlocking="false"/>
-		<stopFacility id="6_6rFFF_stop" x="20010.0" y="10000.0" linkRefId="6_6r_stop" name="Station6" isBlocking="false"/>
-		<stopFacility id="6_6rFFF_stop_train" x="20010.0" y="10000.0" linkRefId="6_6r_stop_train" name="Station6_train" isBlocking="false"/>
-		<stopFacility id="6r_6FFF_stop" x="20010.0" y="10000.0" linkRefId="6r_6_stop" name="Station6" isBlocking="false"/>
-		<stopFacility id="6r_6FFF_stop_train" x="20010.0" y="10000.0" linkRefId="6r_6_stop_train" name="Station6_train" isBlocking="false"/>
-		<stopFacility id="7_7rGGG_stop" x="15010.0" y="0.0" linkRefId="7_7r_stop" name="Station7" isBlocking="false"/>
-		<stopFacility id="7_7rGGG_stop_train" x="15010.0" y="0.0" linkRefId="7_7r_stop_train" name="Station7_train" isBlocking="false"/>
-		<stopFacility id="7r_7GGG_stop" x="15010.0" y="0.0" linkRefId="7r_7_stop" name="Station7" isBlocking="false"/>
-		<stopFacility id="7r_7GGG_stop_train" x="15010.0" y="0.0" linkRefId="7r_7_stop_train" name="Station7_train" isBlocking="false"/>
+		<stopFacility id="1_1rAAA_stop" x="100.0" y="20000.0" linkRefId="1_1r_stop" name="Station1" isBlocking="false"/>
+		<stopFacility id="1_1rAAA_stop_train" x="100.0" y="20000.0" linkRefId="1_1r_stop_train" name="Station1_train" isBlocking="false"/>
+		<stopFacility id="1r_1AAA_stop" x="100.0" y="20000.0" linkRefId="1r_1_stop" name="Station1" isBlocking="false"/>
+		<stopFacility id="1r_1AAA_stop_train" x="100.0" y="20000.0" linkRefId="1r_1_stop_train" name="Station1_train" isBlocking="false"/>
+		<stopFacility id="2_2rBBB_stop" x="10100.0" y="20000.0" linkRefId="2_2r_stop" name="Station2" isBlocking="false"/>
+		<stopFacility id="2_2rBBB_stop_train" x="10100.0" y="20000.0" linkRefId="2_2r_stop_train" name="Station2_train" isBlocking="false"/>
+		<stopFacility id="2r_2BBB_stop" x="10100.0" y="20000.0" linkRefId="2r_2_stop" name="Station2" isBlocking="false"/>
+		<stopFacility id="2r_2BBB_stop_train" x="10100.0" y="20000.0" linkRefId="2r_2_stop_train" name="Station2_train" isBlocking="false"/>
+		<stopFacility id="3_3rCCC_stop" x="20100.0" y="20000.0" linkRefId="3_3r_stop" name="Station3" isBlocking="false"/>
+		<stopFacility id="3_3rCCC_stop_train" x="20100.0" y="20000.0" linkRefId="3_3r_stop_train" name="Station3_train" isBlocking="false"/>
+		<stopFacility id="3r_3CCC_stop" x="20100.0" y="20000.0" linkRefId="3r_3_stop" name="Station3" isBlocking="false"/>
+		<stopFacility id="3r_3CCC_stop_train" x="20100.0" y="20000.0" linkRefId="3r_3_stop_train" name="Station3_train" isBlocking="false"/>
+		<stopFacility id="4_4rDDD_stop" x="30100.0" y="20000.0" linkRefId="4_4r_stop" name="Station4" isBlocking="false"/>
+		<stopFacility id="4_4rDDD_stop_train" x="30100.0" y="20000.0" linkRefId="4_4r_stop_train" name="Station4_train" isBlocking="false"/>
+		<stopFacility id="4r_4DDD_stop" x="30100.0" y="20000.0" linkRefId="4r_4_stop" name="Station4" isBlocking="false"/>
+		<stopFacility id="4r_4DDD_stop_train" x="30100.0" y="20000.0" linkRefId="4r_4_stop_train" name="Station4_train" isBlocking="false"/>
+		<stopFacility id="5_5rEEE_stop" x="10100.0" y="10000.0" linkRefId="5_5r_stop" name="Station5" isBlocking="false"/>
+		<stopFacility id="5_5rEEE_stop_train" x="10100.0" y="10000.0" linkRefId="5_5r_stop_train" name="Station5_train" isBlocking="false"/>
+		<stopFacility id="5r_5EEE_stop" x="10100.0" y="10000.0" linkRefId="5r_5_stop" name="Station5" isBlocking="false"/>
+		<stopFacility id="5r_5EEE_stop_train" x="10100.0" y="10000.0" linkRefId="5r_5_stop_train" name="Station5_train" isBlocking="false"/>
+		<stopFacility id="6_6rFFF_stop" x="20100.0" y="10000.0" linkRefId="6_6r_stop" name="Station6" isBlocking="false"/>
+		<stopFacility id="6_6rFFF_stop_train" x="20100.0" y="10000.0" linkRefId="6_6r_stop_train" name="Station6_train" isBlocking="false"/>
+		<stopFacility id="6r_6FFF_stop" x="20100.0" y="10000.0" linkRefId="6r_6_stop" name="Station6" isBlocking="false"/>
+		<stopFacility id="6r_6FFF_stop_train" x="20100.0" y="10000.0" linkRefId="6r_6_stop_train" name="Station6_train" isBlocking="false"/>
+		<stopFacility id="7_7rGGG_stop" x="15100.0" y="0.0" linkRefId="7_7r_stop" name="Station7" isBlocking="false"/>
+		<stopFacility id="7_7rGGG_stop_train" x="15100.0" y="0.0" linkRefId="7_7r_stop_train" name="Station7_train" isBlocking="false"/>
+		<stopFacility id="7r_7GGG_stop" x="15100.0" y="0.0" linkRefId="7r_7_stop" name="Station7" isBlocking="false"/>
+		<stopFacility id="7r_7GGG_stop_train" x="15100.0" y="0.0" linkRefId="7r_7_stop_train" name="Station7_train" isBlocking="false"/>
 	</transitStops>
 	<transitLine id="MTR1">
 		<transitRoute id="From_1_to_4_MTR1">

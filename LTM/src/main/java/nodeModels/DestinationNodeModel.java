@@ -23,7 +23,9 @@ public class DestinationNodeModel{
 	private NetworkRoute r;
 	private int T;
 	private LinkModel inLinkModel;
-	private double[] LTMTimePoints;	
+	private double[] LTMTimePoints;
+	
+	public static int globalTimeStep = 0;
 	
 	
 	private MapToArray<VariableDetails> variables;
@@ -35,7 +37,7 @@ public class DestinationNodeModel{
 		this.r = r;
 		this.rId = rId;
 		this.dummyNode = LTMUtils.createDummyNode(this.actualNode, false, rId);
-		this.inLinkModel = new GenericLinkModel(LTMUtils.createDummyLink(dummyNode, actualNode, rId, false));
+		this.inLinkModel = new GenericLinkModel(LTMUtils.createDummyLink(actualNode, dummyNode, rId, false));
 		this.inLinkModel.setLTMTimeBeanAndRouteSet(LTMTimePoints, Map.of(rId,r));
 		if(variables!=null)this.inLinkModel.setOptimizationVariables(variables);
 		originalNodeModel.addDestinationNode(this);

@@ -219,6 +219,13 @@ public class LTMLoadableDemandV2 {
 					if(!this.linkToTrvRouteIncidence.containsKey(l))this.linkToTrvRouteIncidence.put(l, new HashSet<>());
 					this.linkToTrvRouteIncidence.get(l).add(rId);
 				});
+				for(String t:timeBean.keySet()) {
+					if(!demandFromRoute.containsKey(t)) {
+						double d = 0;
+						double[] dD = new double[this.variables.getKeySet().size()];
+						demandFromRoute.put(t, new Tuple<>(d,dD));
+					}
+				}
 				this.trvDemand.put(rId, demandFromRoute);
 				
 			}

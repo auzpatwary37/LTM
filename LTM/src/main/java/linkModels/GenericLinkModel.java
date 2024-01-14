@@ -11,6 +11,7 @@ import org.matsim.api.core.v01.population.Route;
 import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.utils.collections.Tuple;
 
+import nodeModels.OriginNodeModel;
 import utils.LTMUtils;
 import utils.MapToArray;
 import utils.TuplesOfThree;
@@ -22,7 +23,12 @@ import utils.VariableDetails;
  *
  */
 
+
+
 public class GenericLinkModel implements LinkModel{
+	
+	public double Nx0Sum = 0;
+	public static int globalTimeStep = 0;
 	private Logger logger = Logger.getLogger(GenericLinkModel.class);
 	private final Link link;
 	private double[] timePoints;// time slots
@@ -60,7 +66,6 @@ public class GenericLinkModel implements LinkModel{
 //	private double[][] dNx0;
 //	private double[][] dNxl;
 //	private double[][] dk;
-	
 	
 	
 	public GenericLinkModel (Link l) {
@@ -143,7 +148,7 @@ public class GenericLinkModel implements LinkModel{
 //				this.dS[timeIdx] = ds;
 //				this.Sdt[timeIdx] = sdt;
 				
-				if(Double.isNaN(s)||Double.isInfinite(s)) {
+				if(Double.isNaN(s)||Double.isInfinite(s)||s<0||s>this.Nx0[timeIdx]) {
 					logger.debug("sending flow is nan or infinite!");
 				}
 				if(Double.isNaN(sdt)||Double.isInfinite(sdt)) {
@@ -158,12 +163,14 @@ public class GenericLinkModel implements LinkModel{
 				N = this.Nx0[tl]+(this.Nx0[tl]-this.Nx0[tl+1])*(t-timePoints[tl])/delT;//interpolate between the cumulative flow of tl and tu = tl+1 to gert the cumulative flow at t. 
 				s = Math.min(N-this.Nxl[timeIdx], fd.qm*delT);
 				
-				if(Double.isNaN(s)||Double.isInfinite(s)) {
-					logger.debug("sending flow is nan or infinite!");
+				if(Double.isNaN(s)||Double.isInfinite(s)||s<0) {
+					logger.debug("sending flow is nan or infinite or negative!");
 				}
 			}
 //			this.S[timeIdx] = s;
-			
+//			if(s>0 && OriginNodeModel.arraySum(ds)==0) {
+//				logger.debug("ds is zero even though s is non zero.");
+//			}
 		
 		return new TuplesOfThree<>(s,sdt,ds);// the sending flow is the min between this two term 
 	}
@@ -194,7 +201,7 @@ public class GenericLinkModel implements LinkModel{
 				double[] dN = Ne.getSecond();
 				double Ndt = Nedt.getSecond()[0];
 				dr = new double[this.variables.getKeySet().size()];
-				
+				// Here we assume that d(fd.Kj*fd.L) is zero. 
 				if(r != fd.qm*delT) {
 					dr = MatrixUtils.createRealVector(dN).subtract(MatrixUtils.createRealVector(this.dNx0[timeIdx])).getData();
 					rdt = Ndt-Nx0dt[timeIdx];
@@ -203,21 +210,21 @@ public class GenericLinkModel implements LinkModel{
 				}
 //				this.dR[timeIdx] = dr;
 //				this.Rdt[timeIdx] = rdt;
-				if(Double.isNaN(r)||Double.isInfinite(r)) {
-					logger.debug("sending flow is nan or infinite!");
+				if(Double.isNaN(r)||Double.isInfinite(r)||r<0) {
+					logger.debug("Reciving flow is nan or infinite!");
 				}
 				if(Double.isNaN(rdt)||Double.isInfinite(rdt)) {
-					logger.debug("sending flow time gradient is nan or infinite!");
+					logger.debug("Reciving flow time gradient is nan or infinite!");
 				}
 				
 				if(MatrixUtils.createRealVector(dr).isNaN()||MatrixUtils.createRealVector(dr).isInfinite()) {
-					logger.debug("sending flow gradient is nan or infinite!");
+					logger.debug("Reciving flow gradient is nan or infinite!");
 				}
 			}else {
 				N = this.Nxl[tl]+(this.Nxl[tl]-this.Nxl[tl+1])*(t-timePoints[tl])/delT;//interpolate between the cumulative flow of tl and tu = tl+1 to gert the cumulative flow at t. 
 				r = Math.min(N+fd.kj*fd.L-this.Nx0[timeIdx], fd.qm*delT);
-				if(Double.isNaN(r)||Double.isInfinite(r)) {
-					logger.debug("sending flow is nan or infinite!");
+				if(Double.isNaN(r)||Double.isInfinite(r)||r<0) {
+					logger.debug("Reciving flow is nan or infinite!");
 				}
 			}
 			//this.R[timeIdx] = r;
@@ -261,6 +268,21 @@ public class GenericLinkModel implements LinkModel{
 		this.Nrxl[ind][timeInd] = flow;
 		if(dNrxl!=null)this.dNrxl[ind][timeInd]=dNrxl;
 	}
+	
+	@Override
+	public boolean checkNx0SumChange() {
+		double sum = 0;
+		for(double d:this.Nx0) {
+			sum+=d;
+		}
+		if(this.Nx0Sum-sum!=0) {
+			this.Nx0Sum = sum;
+			return true;
+		}
+		return false;
+		
+	}
+	
 	
 	//_____________________________Getter Setter_________________________________________________
 	
@@ -422,7 +444,7 @@ class FD{
 	public FD(double L) {
 		this.L = L;
 		vf = 16.67;
-		qm = 1800;
+		qm = .5;
 		kj = 0.15;
 		wf = -1*qm/kj;
 	}
