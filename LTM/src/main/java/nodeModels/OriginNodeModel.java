@@ -51,6 +51,7 @@ public class OriginNodeModel{
 		if(variables!=null)this.outLinkModel.setOptimizationVariables(variables);
 		originalNodeModel.addOriginNode(this);
 		this.T = LTMTimePoints.length;
+		this.LTMTimePoints = LTMTimePoints;
 		TuplesOfThree<double[],double[],double[][]> Nrr = LTMUtils.setUpDemandV2(demand, demandTimeBean, variables, LTMTimePoints, 1800, true);
 		this.Nr = Nrr.getFirst();
 		this.Nrdt = Nrr.getSecond();
@@ -84,45 +85,39 @@ public class OriginNodeModel{
 	}
 	
 	
-	public TuplesOfThree<Double,Double,double[]> generateIntendedTurnRatio(int timeStep) {
-		TuplesOfThree<Double, Double, double[]> R = this.outLinkModel.getRecivingFlow(timeStep);
-		return new TuplesOfThree<>(R.getFirst(),R.getSecond(),R.getThird());
+	public Tuple<Double,double[]> generateIntendedTurnRatio(int timeStep) {
+		Tuple<Double,double[]> R = this.outLinkModel.getRecivingFlow(timeStep);
+		return new Tuple<>(R.getFirst(),R.getSecond());
 		
 	}
 	
 	
-	public TuplesOfThree<Double, Double, double[]> applyNodeModel(int timeStep, TuplesOfThree<Double,Double,double[]>R) {
+	public Tuple<Double, double[]> applyNodeModel(int timeStep, Tuple<Double,double[]>R) {
 		double gj = 0;
-		double gjdt = 0;
 		double[] dgj = null;
 		if(Nr[timeStep+1]-outLinkModel.getNx0()[timeStep]<R.getFirst()) {
 			gj = Nr[timeStep+1]-outLinkModel.getNx0()[timeStep];
-			gjdt = Nrdt[timeStep+1]-outLinkModel.getNx0dt()[timeStep];
 			dgj = MatrixUtils.createRealVector(dNr[timeStep+1]).subtract(outLinkModel.getdNx0()[timeStep]).getData();
 		}else {
 			gj = R.getFirst();
-			gjdt =R.getSecond();
-			dgj = R.getThird();
+			dgj = R.getSecond();
 		}
-//		if(gj>0 && arraySum(dgj)==0) {
-//			System.out.println("No gradient!!!");
-//		}
-		return new TuplesOfThree<>(gj,gjdt,dgj);
+		return new Tuple<>(gj,dgj);
 		
 	}
 
-	public void updateFlow(int timeStep, TuplesOfThree<Double,Double,double[]>Gj) {
+	public void updateFlow(int timeStep, Tuple<Double,double[]>Gj) {
 		this.outLinkModel.getNx0()[timeStep+1] = this.outLinkModel.getNx0()[timeStep]+Gj.getFirst();
 		this.outLinkModel.getNrx0()[0][timeStep+1] = this.outLinkModel.getNrx0()[0][timeStep]+Gj.getFirst();
-		this.outLinkModel.getNx0dt()[timeStep+1] = this.outLinkModel.getNx0dt()[timeStep]+Gj.getSecond();
-		this.outLinkModel.getNrx0dt()[0][timeStep+1] = this.outLinkModel.getNrx0dt()[0][timeStep]+Gj.getSecond();
-		this.outLinkModel.getdNx0()[timeStep+1] = MatrixUtils.createRealVector(this.outLinkModel.getdNx0()[timeStep]).add(Gj.getThird()).getData();
-		this.outLinkModel.getdNrx0()[0][timeStep+1] = MatrixUtils.createRealVector(this.outLinkModel.getdNrx0()[0][timeStep]).add(Gj.getThird()).getData();
+		this.outLinkModel.getNx0dt()[timeStep+1] = (this.outLinkModel.getNx0()[timeStep+1]-this.outLinkModel.getNx0()[timeStep])/(this.LTMTimePoints[timeStep+1]-this.LTMTimePoints[timeStep]);
+		this.outLinkModel.getNrx0dt()[0][timeStep+1] = (this.outLinkModel.getNrx0()[0][timeStep+1]-this.outLinkModel.getNrx0()[0][timeStep])/(this.LTMTimePoints[timeStep+1]-this.LTMTimePoints[timeStep]);
+		this.outLinkModel.getdNx0()[timeStep+1] = MatrixUtils.createRealVector(this.outLinkModel.getdNx0()[timeStep]).add(Gj.getSecond()).getData();
+		this.outLinkModel.getdNrx0()[0][timeStep+1] = MatrixUtils.createRealVector(this.outLinkModel.getdNrx0()[0][timeStep]).add(Gj.getSecond()).getData();
 	}
 
 	public void performLTMStep(int timeStep) {
-		TuplesOfThree<Double,Double,double[]> R = this.generateIntendedTurnRatio(timeStep);
-		TuplesOfThree<Double,Double,double[]> G = this.applyNodeModel(timeStep,R);
+		Tuple<Double,double[]> R = this.generateIntendedTurnRatio(timeStep);
+		Tuple<Double,double[]> G = this.applyNodeModel(timeStep,R);
 		this.updateFlow(timeStep,G);
 	}
 

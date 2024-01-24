@@ -46,34 +46,34 @@ public class DestinationNodeModel{
 		
 	}
 	
-	public TuplesOfThree<Double, Double, double[]> generateIntendedTurnRatio(int timeStep) {
-		TuplesOfThree<Double, Double, double[]> siOut= this.inLinkModel.getSendingFlow(timeStep);
+	public Tuple<Double, double[]> generateIntendedTurnRatio(int timeStep) {
+		Tuple<Double, double[]> siOut= this.inLinkModel.getSendingFlow(timeStep);
 		return siOut;
 	}
 
 
 
 
-	public TuplesOfThree<Double, Double, double[]> applyNodeModel(int timeStep,TuplesOfThree<Double, Double, double[]> S ) {
+	public Tuple<Double, double[]> applyNodeModel(int timeStep,Tuple<Double, double[]> S ) {
 		return S;
 	}
 
 	
-	public void updateFlow(int timeStep,TuplesOfThree<Double, Double, double[]> Gi) {
+	public void updateFlow(int timeStep,Tuple<Double, double[]> Gi) {
 		this.inLinkModel.getNxl()[timeStep+1] = this.inLinkModel.getNxl()[timeStep]+Gi.getFirst();
-		this.inLinkModel.getNxldt()[timeStep+1] = this.inLinkModel.getNxldt()[timeStep]+Gi.getSecond();
-		this.inLinkModel.getdNxl()[timeStep+1] = MatrixUtils.createRealVector(this.inLinkModel.getdNxl()[timeStep]).add(Gi.getThird()).getData();
+		this.inLinkModel.getNxldt()[timeStep+1] = Gi.getFirst()/(this.LTMTimePoints[timeStep+1]-this.LTMTimePoints[timeStep]);
+		this.inLinkModel.getdNxl()[timeStep+1] = MatrixUtils.createRealVector(this.inLinkModel.getdNxl()[timeStep]).add(Gi.getSecond()).getData();
 		
 		this.inLinkModel.getNrxl()[0][timeStep+1] = this.inLinkModel.getNrxl()[0][timeStep]+Gi.getFirst();
-		this.inLinkModel.getNrxldt()[0][timeStep+1] = this.inLinkModel.getNrxldt()[0][timeStep]+Gi.getSecond();
-		this.inLinkModel.getdNrxl()[0][timeStep+1] = MatrixUtils.createRealVector(this.inLinkModel.getdNrxl()[0][timeStep]).add(Gi.getThird()).getData();
+		this.inLinkModel.getNrxldt()[0][timeStep+1] = Gi.getFirst()/(this.LTMTimePoints[timeStep+1]-this.LTMTimePoints[timeStep]);
+		this.inLinkModel.getdNrxl()[0][timeStep+1] = MatrixUtils.createRealVector(this.inLinkModel.getdNrxl()[0][timeStep]).add(Gi.getSecond()).getData();
 		
 	}
 
 	
 	public void performLTMStep(int timeStep) {
-		TuplesOfThree<Double, Double, double[]> S = this.generateIntendedTurnRatio(timeStep);
-		TuplesOfThree<Double, Double, double[]> Gi = this.applyNodeModel(timeStep,S);
+		Tuple<Double, double[]> S = this.generateIntendedTurnRatio(timeStep);
+		Tuple<Double, double[]> Gi = this.applyNodeModel(timeStep,S);
 		this.updateFlow(timeStep,Gi);
 	}
 

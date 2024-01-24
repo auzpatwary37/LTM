@@ -51,7 +51,7 @@ public interface LinkModel {
 	 * @param timeIdx
 	 * @return tuplesOfThree containing S Sdt and dS
 	 */
-	public TuplesOfThree<Double,Double,double[]> getSendingFlow(int timeIndx);
+	public Tuple<Double, double[]> getSendingFlow(int timeIndx);
 	
 	/**
 	 * Get the receiving flow for the time index (See the thesis of Yperman. Yperman, I. (2007). The link transmission model for dynamic network loading.) 
@@ -59,7 +59,7 @@ public interface LinkModel {
 	 * @return
 	 * tuplesOfThree containing R, Rdt and dR
 	 */
-	public TuplesOfThree<Double, Double, double[]> getRecivingFlow(int timeIdx);
+	public Tuple<Double, double[]> getRecivingFlow(int timeIdx);
 	
 	/**
 	 * update the boundary cumulative flow for timeIndex timeIndx at x0

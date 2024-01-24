@@ -257,6 +257,25 @@ public class LTMUtils{
 		return new TuplesOfThree<>(abyb,dt,grad);
 	}
 	
+	public static Tuple<Double,double[]> calcAbyBGrad(Tuple<Double,double[]> A, Tuple<Double,double[]> B){
+		Double abyb = A.getFirst()/B.getFirst();
+		double bsquare = Math.pow(B.getFirst(), 2);
+		double[] grad = null;
+		if(A.getSecond() != null && B.getSecond() != null) {
+			grad = MatrixUtils.createRealVector(A.getSecond()).mapMultiply(B.getFirst()).subtract(MatrixUtils.createRealVector(B.getSecond()).mapMultiply(A.getFirst())).mapDivide(bsquare).getData();//(bda-adb)/b^2
+		}
+		return new Tuple<>(abyb,grad);
+	}
+
+	public static Tuple<Double,double[]> calcAtimesBGrad(Tuple<Double,double[]> A, Tuple<Double,double[]> B){
+		Double abyb = A.getFirst()*B.getFirst();
+		
+		double[] grad = null;
+		if(A.getSecond()!= null && B.getSecond() != null)grad = MatrixUtils.createRealVector(A.getSecond()).mapMultiply(B.getFirst()).add(MatrixUtils.createRealVector(B.getSecond()).mapMultiply(A.getFirst())).getData();//(bda+adb)
+		return new Tuple<>(abyb,grad);
+	}
+	
+	
 	public static Link createDummyLink(Node fromNode,Node toNode,Id<NetworkRoute> r,boolean ifOriginElseDestination) {
 		String originDestinationIdentifier = "O";
 		if(!ifOriginElseDestination)originDestinationIdentifier = "D";

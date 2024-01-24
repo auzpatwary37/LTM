@@ -36,25 +36,21 @@ public class GenericNodeModel implements NodeModel{
 	private Map<Id<Link>,LinkModel> outLinkModels = new HashMap<>();// Link models for all the out links 
 	private MapToArray<VariableDetails> variables;// Map to array for all the variables that the gradients are supposed to be calculated for; this can be shared over all over the system
 	private Map<Id<Link>,Map<Id<Link>,double[]>> turnRatio = new HashMap<>();// the turn ratio, this can be static or dynamic 
-	private Map<Id<Link>,Map<Id<Link>,double[]>> turnRatiodt = new HashMap<>();// the turn ratio gradient with respect to time, this can be static or dynamic 
+	// the turn ratio gradient with respect to time, this can be static or dynamic 
 	private Map<Id<Link>,Map<Id<Link>,double[][]>> dturnRatio = new HashMap<>();// the turn ratio gradient with respect to the variables, this can be static or dynamic 
 	
-	private Map<Id<Link>,Map<Id<Link>,double[]>> turn = new HashMap<>();// the turn ratio, this can be static or dynamic 
-	private Map<Id<Link>,Map<Id<Link>,double[]>> turndt = new HashMap<>();// the turn ratio gradient with respect to time, this can be static or dynamic 
+	private Map<Id<Link>,Map<Id<Link>,double[]>> turn = new HashMap<>();// the turn ratio, this can be static or dynamic // the turn ratio gradient with respect to time, this can be static or dynamic 
 	private Map<Id<Link>,Map<Id<Link>,double[][]>> dturn = new HashMap<>();// the turn ratio gradient with respect to the variables, this can be static or dynamic 
 	private Map<Id<Link>,Set<NetworkRoute>> linkToRouteIncidence = new HashMap<>();
 		
 	private Map<Id<Link>,Map<Id<Link>,Double>>S_ij = new HashMap<>();
-	private Map<Id<Link>,Map<Id<Link>,Double>>S_ijdt = new HashMap<>();
 	private Map<Id<Link>,Map<Id<Link>,double[]>>dS_ij = new HashMap<>();	
 	
 	private Map<Id<Link>,Double> R_j = new HashMap<>();
-	private Map<Id<Link>,Double> R_jdt = new HashMap<>();
 	private Map<Id<Link>,double[]> dR_j = new HashMap<>();
 	
 	
 	private Map<Id<Link>,Map<Id<Link>,Double>> G_ij = new HashMap<>();
-	private Map<Id<Link>,Map<Id<Link>,Double>> G_ijdt = new HashMap<>();
 	private Map<Id<Link>,Map<Id<Link>,double[]>>dG_ij = new HashMap<>();
 	
 	SignalFlowReductionGenerator sg = null;
@@ -107,20 +103,16 @@ public class GenericNodeModel implements NodeModel{
 
 				if(!this.turnRatio.containsKey(inLink.getKey())) {
 					this.turnRatio.put(inLink.getKey(), new HashMap<>());
-					this.turnRatiodt.put(inLink.getKey(), new HashMap<>());
 					this.dturnRatio.put(inLink.getKey(), new HashMap<>());
 					
 					this.turn.put(inLink.getKey(), new HashMap<>());
-					this.turndt.put(inLink.getKey(), new HashMap<>());
 					this.dturn.put(inLink.getKey(), new HashMap<>());
 				}
 				if(!this.turnRatio.get(inLink.getKey()).containsKey(toLink)) {
 					this.turnRatio.get(inLink.getKey()).put(toLink, new double[T]);
-					this.turnRatiodt.get(inLink.getKey()).put(toLink, new double[T]);
 					this.dturnRatio.get(inLink.getKey()).put(toLink, new double[T][this.variables.getKeySet().size()]);
 					
 					this.turn.get(inLink.getKey()).put(toLink, new double[T]);
-					this.turndt.get(inLink.getKey()).put(toLink, new double[T]);
 					this.dturn.get(inLink.getKey()).put(toLink, new double[T][this.variables.getKeySet().size()]);
 				}
 				int rInd = i;
@@ -142,8 +134,6 @@ public class GenericNodeModel implements NodeModel{
 				this.turn.get(inLink.getKey()).get(e.getKey())[timeStep] = turns.get(inLink.getKey()).get(e.getKey());
 				if(this.variables!=null)this.dturnRatio.get(inLink.getKey()).get(e.getKey())[timeStep] = outd.get(e.getKey()).getSecond();
 				if(this.variables!=null)this.dturn.get(inLink.getKey()).get(e.getKey())[timeStep] = turnsGrad.get(inLink.getKey()).get(e.getKey()).getData();
-				this.turnRatiodt.get(inLink.getKey()).get(e.getKey())[timeStep] = outdt.get(e.getKey()).getSecond()[0];
-				this.turndt.get(inLink.getKey()).get(e.getKey())[timeStep] = turnsdt.get(inLink.getKey()).get(e.getKey());
 			});
 
 		}
@@ -154,11 +144,9 @@ public class GenericNodeModel implements NodeModel{
 		int k = 0;
 		int maxK = 10;
 		Map<Id<Link>,Map<Id<Link>,Double>>R_ij = new HashMap<>();
-		Map<Id<Link>,Map<Id<Link>,Double>>R_ijdt = new HashMap<>();
 		Map<Id<Link>,Map<Id<Link>,double[]>>dR_ij = new HashMap<>();
 
 		Map<Id<Link>,Map<Id<Link>,Double>>g_ij = new HashMap<>();
-		Map<Id<Link>,Map<Id<Link>,Double>>g_ijdt = new HashMap<>();
 		Map<Id<Link>,Map<Id<Link>,double[]>>dg_ij = new HashMap<>();
 
 		Set<Id<Link>> Iprime = new HashSet<>();
@@ -170,7 +158,6 @@ public class GenericNodeModel implements NodeModel{
 				if(!R_ij.containsKey(i.getLink().getId())) {
 					R_ij.put(i.getLink().getId(), new HashMap<>());
 					dR_ij.put(i.getLink().getId(), new HashMap<>());
-					R_ijdt.put(i.getLink().getId(), new HashMap<>());
 
 				}
 				//For now lets assume the turning capacity is 1800, i.e, the same
@@ -196,13 +183,7 @@ public class GenericNodeModel implements NodeModel{
 				R_ij.get(i.getLink().getId()).put(j.getLink().getId(),v);
 				if(this.variables!=null)dR_ij.get(i.getLink().getId()).put(j.getLink().getId(), 
 						MatrixUtils.createRealVector(this.dR_j.get(j.getLink().getId())).mapMultiply(cap*gbyc/sumgbyctimesqmij.get(j.getLink().getId())).getData());
-				R_ijdt.get(i.getLink().getId()).put(j.getLink().getId(), cap*gbyc/sumgbyctimesqmij.get(j.getLink().getId())*this.R_jdt.get(j.getLink().getId()));
-			
 				if(!Double.isFinite(R_ij.get(i.getLink().getId()).get(j.getLink().getId()))||R_ij.get(i.getLink().getId()).get(j.getLink().getId())<0) {
-					System.out.println("Debug!");
-				}
-				
-				if(!Double.isFinite(R_ijdt.get(i.getLink().getId()).get(j.getLink().getId()))) {
 					System.out.println("Debug!");
 				}
 				
@@ -221,7 +202,6 @@ public class GenericNodeModel implements NodeModel{
 			double constraint = 1;
 			double[] dConstraint =  null;
 			if(this.variables!=null)dConstraint = new double[this.variables.getKeySet().size()];
-			double constraintdt = 1;
 
 			for(Id<Link> jId:this.S_ij.get(iId).keySet()) {//find out the most active constraint
 				LinkModel j = this.outLinkModels.get(jId);
@@ -235,15 +215,11 @@ public class GenericNodeModel implements NodeModel{
 				if(qbys<constraint) {
 					constraint = qbys;
 					if(this.variables!=null)dConstraint = MatrixUtils.createRealVector(this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())).mapMultiply(-1*qnij/Math.pow(sij,2)).getData();
-					constraintdt = -1*qnij/Math.pow(sij,2)*this.S_ijdt.get(i.getLink().getId()).get(j.getLink().getId());
 				}
 				if(!Double.isFinite(constraint)) {
 					System.out.println("Debug!");
 				}
 				
-				if(!Double.isFinite(constraintdt)) {
-					System.out.println("Debug!");
-				}
 				
 				if(LTMUtils.checkForNanOrInfinity(dConstraint)) {
 					System.out.println("Debug!");
@@ -255,20 +231,15 @@ public class GenericNodeModel implements NodeModel{
 
 				if(RijbySij<constraint) {// We assume the already selected one will be kept selected
 					constraint = RijbySij;
-					TuplesOfThree<Double, Double, double[]> a = LTMUtils.calcAbyBGrad(new TuplesOfThree<>(R_ij.get(i.getLink().getId()).get(j.getLink().getId()),
-							R_ijdt.get(i.getLink().getId()).get(j.getLink().getId()),
+					Tuple<Double, double[]> a = LTMUtils.calcAbyBGrad(new Tuple<>(R_ij.get(i.getLink().getId()).get(j.getLink().getId()),
 							dR_ij.get(i.getLink().getId()).get(j.getLink().getId())), 
-							new TuplesOfThree<>(sij,this.S_ijdt.get(i.getLink().getId()).get(j.getLink().getId()),this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())));
-					if(this.variables!=null)dConstraint = a.getThird();
-					constraintdt = a.getSecond();
+							new Tuple<>(sij,this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())));
+					if(this.variables!=null)dConstraint = a.getSecond();
 				}
 				if(!Double.isFinite(constraint)) {
 					System.out.println("Debug!");
 				}
 				
-				if(!Double.isFinite(constraintdt)) {
-					System.out.println("Debug!");
-				}
 				
 				if(LTMUtils.checkForNanOrInfinity(dConstraint)) {
 					System.out.println("Debug!");
@@ -280,23 +251,19 @@ public class GenericNodeModel implements NodeModel{
 				if(!g_ij.containsKey(i.getLink().getId())) {
 					g_ij.put(i.getLink().getId(), new HashMap<>());
 					dg_ij.put(i.getLink().getId(), new HashMap<>());
-					g_ijdt.put(i.getLink().getId(), new HashMap<>());
 
 				}
-				TuplesOfThree<Double,Double,double[]> gij = LTMUtils.calcAtimesBGrad(new TuplesOfThree<>(constraint,constraintdt,dConstraint), 
-						new TuplesOfThree<>(this.S_ij.get(i.getLink().getId()).get(j.getLink().getId()),
-								this.S_ijdt.get(i.getLink().getId()).get(j.getLink().getId()),this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())));
+				Tuple<Double,double[]> gij = LTMUtils.calcAtimesBGrad(new Tuple<>(constraint,dConstraint), 
+						new Tuple<>(this.S_ij.get(i.getLink().getId()).get(j.getLink().getId()),
+								this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())));
 				g_ij.get(i.getLink().getId()).put(j.getLink().getId(), gij.getFirst());
-				if(this.variables!=null)dg_ij.get(i.getLink().getId()).put(j.getLink().getId(), gij.getThird());
-				g_ijdt.get(i.getLink().getId()).put(j.getLink().getId(), gij.getSecond());
+				if(this.variables!=null)dg_ij.get(i.getLink().getId()).put(j.getLink().getId(), gij.getSecond());
+				
 				
 				if(!Double.isFinite(g_ij.get(i.getLink().getId()).get(j.getLink().getId()))) {
 					System.out.println("Debug!");
 				}
 				
-				if(!Double.isFinite(g_ijdt.get(i.getLink().getId()).get(j.getLink().getId()))) {
-					System.out.println("Debug!");
-				}
 				
 				if(LTMUtils.checkForNanOrInfinity(dg_ij.get(i.getLink().getId()).get(j.getLink().getId()))) {
 					System.out.println("Debug!");
@@ -344,16 +311,13 @@ public class GenericNodeModel implements NodeModel{
 					LinkModel j = this.outLinkModels.get(jId);
 					if(!this.G_ij.containsKey(i.getLink().getId())) {
 						this.G_ij.put(i.getLink().getId(), new HashMap<>());
-						this.G_ijdt.put(i.getLink().getId(),new HashMap<>());
 						this.dG_ij.put(i.getLink().getId(), new HashMap<>());
 					}
 					if(!this.G_ij.get(i.getLink().getId()).containsKey(j.getLink().getId())) {
 						this.G_ij.get(i.getLink().getId()).put(j.getLink().getId(), 0.);
-						this.G_ijdt.get(i.getLink().getId()).put(j.getLink().getId(), 0.);
 						if(this.variables!=null)this.dG_ij.get(i.getLink().getId()).put(j.getLink().getId(), new double[this.variables.getKeySet().size()]);
 					}
 					this.G_ij.get(i.getLink().getId()).put(j.getLink().getId(),g_ij.get(i.getLink().getId()).get(j.getLink().getId()));
-					this.G_ijdt.get(i.getLink().getId()).put(j.getLink().getId(), g_ijdt.get(i.getLink().getId()).get(j.getLink().getId()));
 					this.dG_ij.get(i.getLink().getId()).put(j.getLink().getId(),dg_ij.get(i.getLink().getId()).get(j.getLink().getId()));
 				}
 
@@ -365,7 +329,6 @@ public class GenericNodeModel implements NodeModel{
 		for(k = 0;k<maxK;k++) {
 			
 			Map<Id<Link>,Double> remainingRj = new HashMap<>();
-			Map<Id<Link>,Double> remainingRjdt = new HashMap<>();
 			Map<Id<Link>,RealVector> dremainingRj = new HashMap<>();
 
 			for(Id<Link> iId:this.S_ij.keySet()) {//Calculate Rij
@@ -374,10 +337,8 @@ public class GenericNodeModel implements NodeModel{
 					for(Id<Link> jId:this.S_ij.get(iId).keySet()) {
 						LinkModel j = this.outLinkModels.get(jId);
 						double remainingCap = R_ij.get(i.getLink().getId()).get(j.getLink().getId())-g_ij.get(i.getLink().getId()).get(j.getLink().getId());
-						double remainingCapdt = R_ijdt.get(i.getLink().getId()).get(j.getLink().getId())-g_ijdt.get(i.getLink().getId()).get(j.getLink().getId());
 						RealVector dremainingCap = MatrixUtils.createRealVector(dR_ij.get(i.getLink().getId()).get(j.getLink().getId())).subtract(dg_ij.get(i.getLink().getId()).get(j.getLink().getId()));
 						remainingRj.compute(j.getLink().getId(), (kk,v)->v==null?remainingCap:v+remainingCap);
-						remainingRjdt.compute(j.getLink().getId(), (kk,v)->v==null?remainingCapdt:v+remainingCapdt);
 						if(this.variables!=null)dremainingRj.compute(j.getLink().getId(), (kk,v)->v==null?dremainingCap:v.add(dremainingCap));
 					}
 				}	
@@ -390,8 +351,6 @@ public class GenericNodeModel implements NodeModel{
 						LinkModel j = this.outLinkModels.get(jId);
 						R_ij.get(i.getLink().getId()).put(j.getLink().getId(),
 								R_ij.get(i.getLink().getId()).get(j.getLink().getId())+1/Iprime.size()*remainingRj.get(j.getLink().getId()));
-						R_ijdt.get(i.getLink().getId()).put(j.getLink().getId(),
-								R_ijdt.get(i.getLink().getId()).get(j.getLink().getId())+1/Iprime.size()*remainingRjdt.get(j.getLink().getId()));
 						if(this.variables!=null)dR_ij.get(i.getLink().getId()).put(j.getLink().getId(),
 								MatrixUtils.createRealVector(dR_ij.get(i.getLink().getId()).get(j.getLink().getId())).add(dremainingRj.get(j.getLink().getId()).mapMultiply(1/Iprime.size())).getData());
 					}
@@ -403,7 +362,6 @@ public class GenericNodeModel implements NodeModel{
 				if(Iprime.contains(i.getLink().getId())) {
 					double constraint = 1;
 					double[] dConstraint = new double[this.variables.getKeySet().size()];
-					double constraintdt = 1;
 
 					for(Id<Link> jId:this.S_ij.get(iId).keySet()) {//find out the most active constraint
 						LinkModel j = this.outLinkModels.get(jId);
@@ -417,19 +375,17 @@ public class GenericNodeModel implements NodeModel{
 						if(qbys<constraint) {
 							constraint = qbys;
 							if(this.variables!=null)dConstraint = MatrixUtils.createRealVector(this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())).mapMultiply(-1*qnij/Math.pow(sij,2)).getData();
-							constraintdt = -1*qnij/Math.pow(sij,2)*this.S_ijdt.get(i.getLink().getId()).get(j.getLink().getId());
 						}
 
 						double RijbySij = R_ij.get(i.getLink().getId()).get(j.getLink().getId())/sij;
 
 						if(RijbySij<constraint) {
 							constraint = RijbySij;
-							TuplesOfThree<Double, Double, double[]> a = LTMUtils.calcAbyBGrad(new TuplesOfThree<>(R_ij.get(i.getLink().getId()).get(j.getLink().getId()),
-									R_ijdt.get(i.getLink().getId()).get(j.getLink().getId()),
+							Tuple<Double, double[]> a = LTMUtils.calcAbyBGrad(new Tuple<>(R_ij.get(i.getLink().getId()).get(j.getLink().getId()),
 									dR_ij.get(i.getLink().getId()).get(j.getLink().getId())), 
-									new TuplesOfThree<>(sij,this.S_ijdt.get(i.getLink().getId()).get(j.getLink().getId()),this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())));
-							if(this.variables!=null)dConstraint = a.getThird();
-							constraintdt = a.getSecond();
+									new Tuple<>(sij,this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())));
+							if(this.variables!=null)dConstraint = a.getSecond();
+	
 						}
 
 
@@ -439,15 +395,13 @@ public class GenericNodeModel implements NodeModel{
 						if(!g_ij.containsKey(i.getLink().getId())) {
 							g_ij.put(i.getLink().getId(), new HashMap<>());
 							if(this.variables!=null)dg_ij.put(i.getLink().getId(), new HashMap<>());
-							g_ijdt.put(i.getLink().getId(), new HashMap<>());
 
 						}
-						TuplesOfThree<Double,Double,double[]> gij = LTMUtils.calcAtimesBGrad(new TuplesOfThree<>(constraint,constraintdt,dConstraint), 
-								new TuplesOfThree<>(this.S_ij.get(i.getLink().getId()).get(j.getLink().getId()),
-										this.S_ijdt.get(i.getLink().getId()).get(j.getLink().getId()),this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())));
+						Tuple<Double,double[]> gij = LTMUtils.calcAtimesBGrad(new Tuple<>(constraint,dConstraint), 
+								new Tuple<>(this.S_ij.get(i.getLink().getId()).get(j.getLink().getId()),
+										this.dS_ij.get(i.getLink().getId()).get(j.getLink().getId())));
 						g_ij.get(i.getLink().getId()).put(j.getLink().getId(), gij.getFirst());
-						if(this.variables!=null)dg_ij.get(i.getLink().getId()).put(j.getLink().getId(), gij.getThird());
-						g_ijdt.get(i.getLink().getId()).put(j.getLink().getId(), gij.getSecond());
+						if(this.variables!=null)dg_ij.get(i.getLink().getId()).put(j.getLink().getId(), gij.getSecond());
 
 					}
 				}
@@ -503,16 +457,13 @@ public class GenericNodeModel implements NodeModel{
 				LinkModel j = this.outLinkModels.get(jId);
 				if(!this.G_ij.containsKey(i.getLink().getId())) {
 					this.G_ij.put(i.getLink().getId(), new HashMap<>());
-					this.G_ijdt.put(i.getLink().getId(),new HashMap<>());
 					this.dG_ij.put(i.getLink().getId(), new HashMap<>());
 				}
 				if(!this.G_ij.get(i.getLink().getId()).containsKey(j.getLink().getId())) {
 					this.G_ij.get(i.getLink().getId()).put(j.getLink().getId(), 0.);
-					this.G_ijdt.get(i.getLink().getId()).put(j.getLink().getId(),0.);
 					if(this.variables!=null)this.dG_ij.get(i.getLink().getId()).put(j.getLink().getId(), new double[this.variables.getKeySet().size()]);
 				}
 				this.G_ij.get(i.getLink().getId()).put(j.getLink().getId(),g_ij.get(i.getLink().getId()).get(j.getLink().getId()));
-				this.G_ijdt.get(i.getLink().getId()).put(j.getLink().getId(),g_ijdt.get(i.getLink().getId()).get(j.getLink().getId()));
 				if(this.variables!=null)this.dG_ij.get(i.getLink().getId()).put(j.getLink().getId(),dg_ij.get(i.getLink().getId()).get(j.getLink().getId()));
 			}
 
@@ -530,11 +481,9 @@ public class GenericNodeModel implements NodeModel{
 //			}
 //		});
 		Map<Id<Link>,Double> gi = new HashMap<>();
-		Map<Id<Link>,Double> gidt = new HashMap<>();
 		Map<Id<Link>,double[]> dgi = new HashMap<>();
 
 		Map<Id<Link>,Double> gj = new HashMap<>();
-		Map<Id<Link>,Double> gjdt = new HashMap<>();
 		Map<Id<Link>,double[]> dgj = new HashMap<>();
 		
 		Map<Id<Link>,LinkModel> activeOutLinkModels = new HashMap<>();
@@ -545,13 +494,11 @@ public class GenericNodeModel implements NodeModel{
 				//update gi
 				activeOutLinkModels.put(d.getKey(), this.outLinkModels.get(d.getKey()));
 				gi.compute(inLink.getKey(), (k,v)->v==null?d.getValue():v+d.getValue());
-				gidt.compute(inLink.getKey(), (k,v)->v==null?this.G_ijdt.get(inLink.getKey()).get(d.getKey()):v+this.G_ijdt.get(inLink.getKey()).get(d.getKey()));
 				if(this.variables!=null)dgi.compute(inLink.getKey(), (k,v)->v==null?this.dG_ij.get(inLink.getKey()).get(d.getKey()):
 					MatrixUtils.createRealVector(this.dG_ij.get(inLink.getKey()).get(d.getKey())).add(v).getData());
 
 				//update gj
 				gj.compute(d.getKey(), (k,v)->v==null?d.getValue():v+d.getValue());
-				gjdt.compute(d.getKey(), (k,v)->v==null?this.G_ijdt.get(inLink.getKey()).get(d.getKey()):v+this.G_ijdt.get(inLink.getKey()).get(d.getKey()));
 				if(this.variables!=null)dgj.compute(d.getKey(), (k,v)->v==null?this.dG_ij.get(inLink.getKey()).get(d.getKey()):
 					MatrixUtils.createRealVector(this.dG_ij.get(inLink.getKey()).get(d.getKey())).add(v).getData());
 			
@@ -559,19 +506,12 @@ public class GenericNodeModel implements NodeModel{
 					System.out.println("Debug");
 				}
 				
-				if(!Double.isFinite(gidt.get(inLink.getKey()))) {
-					System.out.println("Debug");
-				}
 				
 				if(LTMUtils.checkForNanOrInfinity(dgi.get(inLink.getKey()))) {
 					System.out.println("Debug");
 				}
 				
 				if(!Double.isFinite(gj.get(d.getKey()))||gj.get(d.getKey())<0) {
-					System.out.println("Debug");
-				}
-				
-				if(!Double.isFinite(gjdt.get(d.getKey()))) {
 					System.out.println("Debug");
 				}
 				
@@ -597,13 +537,13 @@ public class GenericNodeModel implements NodeModel{
 			}
 			inLink.getNxl()[timeStep+1] = inLink.getNxl()[timeStep]+gi.get(inLinkId);// minus??
 			if(this.variables!=null)inLink.getdNxl()[timeStep+1] = MatrixUtils.createRealVector(inLink.getdNxl()[timeStep]).add(dgi.get(inLinkId)).getData();
-			inLink.getNxldt()[timeStep+1] = inLink.getNxldt()[timeStep]+gidt.get(inLinkId);
+			inLink.getNxldt()[timeStep+1] = gi.get(inLinkId)/(this.timePoints[timeStep+1]-this.timePoints[timeStep]);
 		}
 
 		for(Entry<Id<Link>, LinkModel> outLink:activeOutLinkModels.entrySet()) {
 			outLink.getValue().getNx0()[timeStep+1] = outLink.getValue().getNx0()[timeStep]+gj.get(outLink.getKey());
 			if(this.variables!=null)outLink.getValue().getdNx0()[timeStep+1] = MatrixUtils.createRealVector(outLink.getValue().getdNx0()[timeStep]).add(dgj.get(outLink.getKey())).getData();
-			outLink.getValue().getNx0dt()[timeStep+1] = outLink.getValue().getNx0dt()[timeStep]+gjdt.get(outLink.getKey());
+			outLink.getValue().getNx0dt()[timeStep+1] = gj.get(outLink.getKey())/(this.timePoints[timeStep+1]-this.timePoints[timeStep]);
 		}
 
 //		this.inLinkModels.values().forEach(m->{
@@ -661,13 +601,11 @@ public class GenericNodeModel implements NodeModel{
 				double NxrlBefore = inLink.getNrx0()[rInd][tBefore];
 				RealVector dNxrlBefore = null;
 				if(this.variables!=null)dNxrlBefore = tBeforeGrad.mapMultiply(inLink.getNrx0dt()[rInd][tBefore]);
-				double NxrlBeforedt = inLink.getNrx0dt()[rInd][tBefore]*tBeforedt;
 
 
 				double NxrlAfter = inLink.getNrx0()[rInd][tAfter];
 				RealVector dNxrlAfter = null;
 				if(this.variables!=null)dNxrlAfter = tAfterGrad.mapMultiply(inLink.getNrx0dt()[rInd][tAfter]);
-				double NxrlAfterdt = inLink.getNrx0dt()[rInd][tAfter]*tAfterdt;
 				//interpolation
 				double Nrxl;
 				double[] dNrxl = null;
@@ -675,7 +613,6 @@ public class GenericNodeModel implements NodeModel{
 				if(tBefore==tAfter) {
 					Nrxl = NxrlBefore;
 					if(this.variables!=null)dNrxl = dNxrlBefore.getData();
-					Nrxldt = NxrlBeforedt;
 				}else {//interpolate
 					Tuple<Double,double[]> NxrlTuple = null;
 					if(this.variables!=null) NxrlTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>(inLink.getNx0()[tBefore],inLink.getNx0()[tAfter]),
@@ -684,20 +621,13 @@ public class GenericNodeModel implements NodeModel{
 							new Tuple<>(dNxrlBefore.getData(),dNxrlAfter.getData()),
 							flow,
 							inLink.getdNxl()[timeStep+1]);
-					Tuple<Double,double[]> NxrldtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>(inLink.getNx0()[tBefore],inLink.getNx0()[tAfter]),
-							new Tuple<>(NxrlBefore,NxrlAfter),
-							new Tuple<>(new double[] {inLink.getNx0dt()[tBefore]},new double[] {inLink.getNx0dt()[tAfter]}),
-							new Tuple<>(new double[] {NxrlBeforedt},new double[] {NxrlAfterdt}),
-							flow,
-							new double[] {inLink.getNxldt()[timeStep+1]});
 
-					Nrxl = NxrldtTuple.getFirst();
+					Nrxl = NxrlTuple.getFirst();
 					if(this.variables!=null)dNrxl = NxrlTuple.getSecond();
-					Nrxldt = NxrldtTuple.getSecond()[0];
 				}
 				inLink.getNrxl()[rInd][timeStep+1] = Nrxl;
 				if(this.variables!=null)inLink.getdNrxl()[rInd][timeStep+1] = dNrxl;
-				inLink.getNrxldt()[rInd][timeStep+1] = Nrxldt;
+				inLink.getNrxldt()[rInd][timeStep+1] = (Nrxl-inLink.getNrxl()[rInd][timeStep])/(this.timePoints[timeStep+1]-this.timePoints[timeStep]);
 				totalNrxl+=Nrxl;
 
 				//update the toLink's Nrx0
@@ -705,7 +635,8 @@ public class GenericNodeModel implements NodeModel{
 				int outRouteInd = this.outLinkModels.get(toLink).getRouteIds().getIndex(rId);
 				this.outLinkModels.get(toLink).getNrx0()[outRouteInd][timeStep+1] = Nrxl;
 				if(this.variables!=null)this.outLinkModels.get(toLink).getdNrx0()[outRouteInd][timeStep+1] = dNrxl;
-				this.outLinkModels.get(toLink).getNrx0dt()[outRouteInd][timeStep+1] = Nrxldt;
+				this.outLinkModels.get(toLink).getNrx0dt()[outRouteInd][timeStep+1] = (Nrxl-this.outLinkModels.get(toLink).getNrx0()[outRouteInd][timeStep])
+						/(this.timePoints[timeStep+1]-this.timePoints[timeStep]);
 				outLinkTotalNrx0.compute(toLink,(k,v)->v==null?Nrxl:v+Nrxl);
 
 			}
@@ -744,11 +675,9 @@ public class GenericNodeModel implements NodeModel{
 		
 		
 		S_ij = new HashMap<>();
-		S_ijdt = new HashMap<>();
 		dS_ij = new HashMap<>();
 		
 		R_j = new HashMap<>();
-		R_jdt = new HashMap<>();
 		dR_j = new HashMap<>();
 		
 		
@@ -757,18 +686,16 @@ public class GenericNodeModel implements NodeModel{
 				
 
 				if(!S_ij.containsKey(inLink.getKey()))S_ij.put(inLink.getKey(), new HashMap<>());
-				if(!S_ijdt.containsKey(inLink.getKey()))S_ijdt.put(inLink.getKey(), new HashMap<>());
 				if(this.variables!=null &&!dS_ij.containsKey(inLink.getKey()))dS_ij.put(inLink.getKey(), new HashMap<>());
 
 
 
-				TuplesOfThree<Double, Double, double[]> si_link = inLink.getValue().getSendingFlow(timeStep);
+				Tuple<Double, double[]> si_link = inLink.getValue().getSendingFlow(timeStep);
 				
 
 				double nlPlusSi = inLink.getValue().getNxl()[timeStep]+si_link.getFirst();
 				RealVector dnlPlusSi = null;
-				if(this.variables!=null )dnlPlusSi =MatrixUtils.createRealVector(inLink.getValue().getdNxl()[timeStep]).add(si_link.getThird());
-				double nlPlusSidt = inLink.getValue().getNxldt()[timeStep]+si_link.getSecond();
+				if(this.variables!=null )dnlPlusSi =MatrixUtils.createRealVector(inLink.getValue().getdNxl()[timeStep]).add(si_link.getSecond());
 				int tBefore = timeStep;
 				int tAfter = timeStep;
 				
@@ -790,12 +717,9 @@ public class GenericNodeModel implements NodeModel{
 					if(inLink.getValue().getNx0()[tBefore]!=0) {
 						logger.debug("careful. the flow is non zero but dt is zero. This would mean it is a jammed condition, where vehicles are stuck");
 					}
-					tBeforedt = 0;
 					tBeforeGrad = MatrixUtils.createRealVector(new double[this.variables.getKeySet().size()]);
 				}else {
 					if(this.variables!=null )tBeforeGrad = dnlPlusSi.mapMultiply(1/inLink.getValue().getNx0dt()[tBefore]);
-					tBeforedt = nlPlusSidt*1/inLink.getValue().getNx0dt()[tBefore];
-
 				}
 				if(inLink.getValue().getNx0dt()[tAfter]==0) {
 					//this should only happen when the flow itself is zero, meaning nlplussi is zero. 
@@ -809,7 +733,6 @@ public class GenericNodeModel implements NodeModel{
 				}else {
 
 					if(this.variables!=null )tAfterGrad = dnlPlusSi.mapMultiply(1/inLink.getValue().getNx0dt()[tAfter]);
-					tAfterdt = nlPlusSidt*1/inLink.getValue().getNx0dt()[tAfter];
 
 				}
 
@@ -824,33 +747,27 @@ public class GenericNodeModel implements NodeModel{
 
 					if(toLink!=null) {
 						if(!S_ij.get(inLink.getKey()).containsKey(toLink))S_ij.get(inLink.getKey()).put(toLink,0.);
-						if(!S_ijdt.get(inLink.getKey()).containsKey(toLink))S_ijdt.get(inLink.getKey()).put(toLink, 0.);
 						if(this.variables!=null && !dS_ij.get(inLink.getKey()).containsKey(toLink))dS_ij.get(inLink.getKey()).put(toLink, new double[this.variables.getKeySet().size()]);
 	
 						if(!R_j.containsKey(toLink))R_j.put(toLink, 0.);
-						if(!R_jdt.containsKey(toLink))R_jdt.put(toLink, 0.);
 						if(this.variables!=null && !dR_j.containsKey(toLink))dR_j.put(toLink, new double[this.variables.getKeySet().size()]);
 						}
 
 					double S_irBefore = inLink.getValue().getNrx0()[rInd][tBefore];
 					RealVector dS_irBefore = null;
 					if(this.variables!=null)dS_irBefore = tBeforeGrad.mapMultiply(inLink.getValue().getNrx0dt()[rInd][tBefore]);
-					double S_irBeforedt = inLink.getValue().getNrx0dt()[rInd][tBefore]*tBeforedt;
 
 
 					double S_irAfter = inLink.getValue().getNrx0()[rInd][tAfter];
 					RealVector dS_irAfter = null;
 					if(this.variables!=null)dS_irAfter = tAfterGrad.mapMultiply(inLink.getValue().getNrx0dt()[rInd][tAfter]);
-					double S_irAfterdt = inLink.getValue().getNrx0dt()[rInd][tAfter]*tAfterdt;
 
 					//interpolation
 					double s_ir;
 					double[] ds_ir = null;
-					double s_irdt;
 					if(tBefore==tAfter) {
 						s_ir = S_irBefore-inLink.getValue().getNrxl()[rInd][timeStep];
 						if(this.variables!=null)ds_ir = dS_irBefore.subtract(inLink.getValue().getdNrxl()[rInd][timeStep]).getData();
-						s_irdt = S_irBeforedt-inLink.getValue().getNrxldt()[rInd][timeStep];
 						
 					}else {
 						
@@ -861,18 +778,11 @@ public class GenericNodeModel implements NodeModel{
 								new Tuple<>(dS_irBefore.getData(),dS_irAfter.getData()),
 								nlPlusSi,
 								dnlPlusSi.getData());
-						Tuple<Double,double[]> S_irdtTuple = LTMUtils.calcLinearInterpolationAndGradient(new Tuple<>(inLink.getValue().getNx0()[tBefore],inLink.getValue().getNx0()[tAfter]),
-								new Tuple<>(S_irBefore,S_irAfter),
-								new Tuple<>(new double[] {inLink.getValue().getNx0dt()[tBefore]},new double[] {inLink.getValue().getNx0dt()[tAfter]}),
-								new Tuple<>(new double[] {S_irBeforedt},new double[] {S_irAfterdt}),
-								nlPlusSi,
-								new double[] {nlPlusSidt});
 
 						s_ir = S_irTuple.getFirst()-inLink.getValue().getNrxl()[rInd][timeStep];
 						if(this.variables!=null) {
 							ds_ir = MatrixUtils.createRealVector(S_irTuple.getSecond()).subtract(inLink.getValue().getdNrxl()[rInd][timeStep]).getData();
 						}
-						s_irdt = S_irdtTuple.getSecond()[0]-inLink.getValue().getNrxldt()[rInd][timeStep];
 						
 						//if(s_ir>0 && OriginNodeModel.arraySum(ds_ir)==0) {
 							//logger.debug("Gradient did not continue!!!");
@@ -882,9 +792,6 @@ public class GenericNodeModel implements NodeModel{
 							System.out.println("Debug");
 						}
 						
-						if(!Double.isFinite(s_irdt)) {
-							System.out.println("Debug");
-						}
 						
 						if(LTMUtils.checkForNanOrInfinity(ds_ir)) {
 							System.out.println("Debug");
@@ -899,7 +806,6 @@ public class GenericNodeModel implements NodeModel{
 						double[] aa = ds_ir;
 						dS_ij.get(inLink.getKey()).compute(toLink, (k,v)->v==null?aa:MatrixUtils.createRealVector(v).add(aa).toArray());
 					}
-					S_ijdt.get(inLink.getKey()).compute(toLink, (k,v)->v==null?s_irdt:v+s_irdt);
 					
 					
 					
@@ -908,9 +814,6 @@ public class GenericNodeModel implements NodeModel{
 						System.out.println("Debug");
 					}
 					
-					if(!Double.isFinite(S_ijdt.get(inLink.getKey()).get(toLink))) {
-						System.out.println("Debug");
-					}
 					
 					if(LTMUtils.checkForNanOrInfinity(dS_ij.get(inLink.getKey()).get(toLink))) {
 						System.out.println("Debug");
@@ -926,10 +829,9 @@ public class GenericNodeModel implements NodeModel{
 		
 		for(Entry<Id<Link>, LinkModel> outLink: this.outLinkModels.entrySet()) {
 			if(outLink.getValue().getRoutes()!=null) {
-				TuplesOfThree<Double, Double, double[]> R = outLink.getValue().getRecivingFlow(timeStep);
+				Tuple<Double, double[]> R = outLink.getValue().getRecivingFlow(timeStep);
 				R_j.put(outLink.getKey(),R.getFirst());
-				R_jdt.put(outLink.getKey(),R.getSecond());
-				if(this.variables!=null)dR_j.put(outLink.getKey(),R.getThird());
+				if(this.variables!=null)dR_j.put(outLink.getKey(),R.getSecond());
 			}
 		}
 		
@@ -976,25 +878,20 @@ public class GenericNodeModel implements NodeModel{
 	public void reset() {
 		this.dturn.clear();
 		this.turn.clear();
-		this.turndt.clear();
+		
 		
 		this.turnRatio.clear();
 		this.dturnRatio.clear();
-		this.turnRatiodt.clear();
-		
 		
 		
 		this.S_ij.clear();
 		this.dS_ij.clear();
-		this.S_ijdt.clear();
 		
 		this.R_j.clear();
-		this.R_jdt.clear();
 		this.dR_j.clear();
 		
 		this.G_ij.clear();
 		this.dG_ij.clear();
-		this.G_ijdt.clear();
 	}
 	
 }
