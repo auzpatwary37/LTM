@@ -597,13 +597,13 @@ public class GenericNodeModel implements NodeModel{
 			}
 			inLink.getNxl()[timeStep+1] = inLink.getNxl()[timeStep]+gi.get(inLinkId);// minus??
 			if(this.variables!=null)inLink.getdNxl()[timeStep+1] = MatrixUtils.createRealVector(inLink.getdNxl()[timeStep]).add(dgi.get(inLinkId)).getData();
-			inLink.getNxldt()[timeStep+1] = inLink.getNxldt()[timeStep]+gidt.get(inLinkId);
+			inLink.getNxldt()[timeStep+1] = gidt.get(inLinkId);
 		}
 
 		for(Entry<Id<Link>, LinkModel> outLink:activeOutLinkModels.entrySet()) {
 			outLink.getValue().getNx0()[timeStep+1] = outLink.getValue().getNx0()[timeStep]+gj.get(outLink.getKey());
 			if(this.variables!=null)outLink.getValue().getdNx0()[timeStep+1] = MatrixUtils.createRealVector(outLink.getValue().getdNx0()[timeStep]).add(dgj.get(outLink.getKey())).getData();
-			outLink.getValue().getNx0dt()[timeStep+1] = outLink.getValue().getNx0dt()[timeStep]+gjdt.get(outLink.getKey());
+			outLink.getValue().getNx0dt()[timeStep+1] = gjdt.get(outLink.getKey());
 		}
 
 //		this.inLinkModels.values().forEach(m->{
